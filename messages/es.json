@@ -1,0 +1,703 @@
+{
+  "nav": {
+    "browse": "Explorar Tareas",
+    "post": "Publicar una Tarea",
+    "myTasks": "Mis Tareas",
+    "myBids": "Mis Ofertas",
+    "messages": "Mensajes",
+    "balance": "Saldo",
+    "profile": "Perfil",
+    "signIn": "Iniciar Sesión",
+    "verification": "Verificación",
+    "ratings": "Calificaciones",
+    "dispute": "Disputa",
+    "notifications": "Notificaciones",
+    "settings": "Configuración"
+  },
+  "footer": {
+    "platform": "Plataforma",
+    "forTaskers": "Para Trabajadores",
+    "support": "Soporte",
+    "activeCities": "Ciudades activas",
+    "safeMessaging": "Mensajería segura en la aplicación. Tus datos de contacto permanecen privados.",
+    "rights": "Todos los derechos reservados."
+  },
+  "page": {
+    "home": {
+      "title": "Asan Kaam — Mercado Local de Tareas de Pakistán",
+      "heroHeading": "Kaam Dhundo. Kaam Karo. Asan Hai.",
+      "heroBody": "Asan Kaam conecta a personas que necesitan tareas cotidianas con trabajadores verificados y confiables en su vecindario. Desde mover muebles en Lahore hasta reparar una llave que gotea en Karachi — publica una tarea en minutos y recibe ofertas competitivas de trabajadores cercanos.",
+      "heroCta": "Explorar Tareas Abiertas",
+      "cityHeading": "Selecciona tu Ciudad",
+      "cityBody": "Asan Kaam se está lanzando ciudad por ciudad en Pakistán. Elige tu ciudad para ver tareas y trabajadores cerca de ti.",
+      "filtersHeading": "Encuentra la Tarea Correcta",
+      "filtersBody": "Reduce el feed de tareas usando los filtros a continuación. Los trabajadores pueden enfocarse en trabajos que coincidan con sus habilidades, horario y área preferida.",
+      "feedHeading": "Tareas Abiertas Cerca de Ti",
+      "feedBody": "Tareas en vivo publicadas por personas en tu ciudad. Toca cualquier tarjeta para leer los detalles completos y enviar tu oferta.",
+      "ctaHeading": "¿Necesitas Algo Hecho Hoy?",
+      "ctaBody": "Publica tu tarea en menos de dos minutos. Describe lo que necesitas, establece tu presupuesto en PKR y deja que trabajadores verificados te hagan sus mejores ofertas. Sin pago anticipado — tú eliges a quién contratar.",
+      "ctaButton": "Publicar una Tarea Ahora"
+    },
+    "postTask": {
+      "title": "Publicar una Tarea",
+      "categoryHeading": "¿Qué tipo de tarea necesitas que se haga?",
+      "categoryBody": "Elige la categoría que mejor describe tu tarea. Esto ayuda a trabajadores verificados cercanos a encontrar tu anuncio rápidamente.",
+      "detailsHeading": "Describe tu tarea claramente",
+      "detailsBody": "Una descripción clara y específica atrae mejores ofertas más rápido. Incluye qué necesita hacerse, cualquier herramienta o material requerido e instrucciones importantes. Mantén la precisión — los datos de contacto se compartirán solo después de que aceptes una oferta.",
+      "locationHeading": "¿Dónde y cuánto?",
+      "locationBody": "Selecciona la ciudad y área donde se realizará la tarea, luego establece un presupuesto justo en PKR. Los trabajadores ofertarán en o por debajo de tu presupuesto indicado — tú comparas y eliges.",
+      "timingHeading": "¿Cuándo lo necesitas hecho?",
+      "timingBody": "Establece una fecha y ventana de tiempo preferidas para que los taskers puedan planificar según su horario. También puedes marcar la tarea como flexible si el tiempo no es crítico.",
+      "boostHeading": "¿Necesitas que se haga urgentemente? Impulsa tu tarea.",
+      "boostBody": "Un Impulso de Urgencia fija tu tarea en la parte superior del feed en tu ciudad seleccionada durante 24 horas, poniéndola frente a más taskers verificados. La tarifa de impulso se muestra a continuación antes de confirmar — sin cargos ocultos.",
+      "boostCta": "Agregar Impulso de Urgencia — PKR 99",
+      "reviewHeading": "Revisa y publica tu tarea",
+      "reviewBody": "Verifica los detalles a continuación antes de publicar. Una vez publicada, tu tarea se activa como 'Abierta' y los taskers verificados en tu área pueden comenzar a hacer ofertas. Puedes editar o cancelar la tarea desde Mis Tareas siempre que no hayas aceptado una oferta.",
+      "reviewCta": "Publicar Tarea"
+    },
+    "myTasks": {
+      "title": "Mis Tareas",
+      "filtersHeading": "Mis Tareas Publicadas",
+      "filtersBody": "Realiza un seguimiento de cada tarea que has publicado — desde ofertas abiertas hasta trabajos completados. Usa los filtros a continuación para encontrar exactamente lo que necesitas.",
+      "cardsHeading": "Tus Tareas de un Vistazo",
+      "cardsBody": "Cada tarjeta muestra los detalles clave que necesitas para actuar rápido — estado, cantidad de ofertas, presupuesto y ubicación — para que nunca pierdas un paso.",
+      "cardsCta": "Ver Detalles de la Tarea",
+      "actionsHeading": "Gestiona Tus Tareas",
+      "actionsBody": "Toma la acción correcta en cada etapa. Las opciones disponibles se actualizan automáticamente según el estado actual de tu tarea — sin necesidad de adivinar.",
+      "actionsCta": "Publicar una Nueva Tarea"
+    }
+  },
+  "categories": {
+    "eyebrow": "¿Qué necesita hacerse?",
+    "heading": "Explora tareas por tipo",
+    "viewAll": "Ver todo"
+  },
+  "cities": {
+    "comingSoon": "Próximamente",
+    "eyebrow": "Nos estamos expandiendo",
+    "heading": "Disponible en tu ciudad",
+    "live": "En vivo ahora",
+    "subheading": "Asan Kaam se está lanzando ciudad por ciudad en Pakistán."
+  },
+  "cta": {
+    "heading": "¿Listo para comenzar?",
+    "posterBtn": "Publicar una tarea",
+    "subheading": "Únete a miles que publican y completan tareas cada día.",
+    "taskerBtn": "Comienza a ganar"
+  },
+  "hero": {
+    "badge": "Mercado local de tareas de Pakistán",
+    "ctaPoster": "Publicar una tarea",
+    "ctaTasker": "Conviértete en tasker",
+    "headline1": "Haz que el trabajo cotidiano se realice",
+    "headline2": "Encuentra trabajo flexible cerca de ti",
+    "headline3": "Asan Kaam lo hace simple",
+    "subheadline": "Publica tareas, haz ofertas de trabajo y cobra — todo en una sola app.",
+    "trust1": "Taskers verificados",
+    "trust2": "Pagos seguros",
+    "trust3": "Soporte local"
+  },
+  "howItWorks": {
+    "eyebrow": "Proceso simple",
+    "heading": "Cómo funciona Asan Kaam",
+    "posterTitle": "Para personas que necesitan que se haga un trabajo",
+    "subheading": "Publica una vez, compara ofertas, elige tu tasker.",
+    "taskerTitle": "Para personas que buscan ganar dinero"
+  },
+  "myBids": {
+    "browseTasks": "Explorar tareas",
+    "emptyBody": "Vuelve pronto o ajusta tu búsqueda para encontrar más oportunidades.",
+    "emptyTitle": "Aún no hay tareas que coincidan",
+    "eyebrow": "Tus oportunidades",
+    "heading": "Ofertas activas",
+    "searchPlaceholder": "Buscar por tipo de tarea o área",
+    "subheading": "Las tareas en las que has ofertado aparecen aquí.",
+    "tip1": "Oferta rápidamente en tareas nuevas",
+    "tip2": "Mantén tu perfil completo",
+    "tip3": "Entrega un excelente trabajo, obtén reseñas",
+    "tipsHeading": "Consejos para ganar más ofertas",
+    "viewProfile": "Ver perfil"
+  },
+  "myTasks": {
+    "cta": {
+      "body": "Comienza publicando tu primera tarea.",
+      "button": "Publicar una tarea",
+      "heading": "Sin tareas aún"
+    },
+    "heading": "Tus tareas",
+    "postNewTask": "Publicar nueva tarea",
+    "stats": {
+      "activeBids": "Ofertas activas",
+      "completed": "Completadas",
+      "disputed": "Disputadas",
+      "total": "Total"
+    },
+    "subheading": "Realiza un seguimiento de tus tareas publicadas y ofertas entrantes."
+  },
+  "postTask": {
+    "errors": {
+      "areaRequired": "Por favor selecciona tu área",
+      "budgetRange": "El presupuesto debe estar entre 500 y 500,000 PKR",
+      "categoryRequired": "Por favor selecciona una categoría de tarea",
+      "cityRequired": "Por favor selecciona tu ciudad",
+      "descShort": "La descripción debe tener al menos 20 caracteres",
+      "timingRequired": "Por favor establece cuándo necesitas que se haga",
+      "titleShort": "El título debe tener al menos 10 caracteres"
+    },
+    "nav": {
+      "back": "Atrás",
+      "next": "Siguiente",
+      "stepOf": "Paso {current} de {total}",
+      "submit": "Publicar tarea"
+    },
+    "pageSub": "Cuéntanos qué necesitas que se haga",
+    "pageTitle": "Publicar una tarea",
+    "review": {
+      "budget": "Presupuesto",
+      "category": "Categoría",
+      "commission": "Tarifa de plataforma",
+      "date": "Fecha",
+      "descPreview": "Detalles",
+      "heading": "Revisa tu tarea",
+      "location": "Ubicación",
+      "sub": "Verifica todo antes de publicar",
+      "taskerPays": "El tasker paga",
+      "timing": "Tiempo",
+      "title": "Tarea",
+      "totalPosted": "Total publicado",
+      "urgencyFee": "Tarifa de urgencia",
+      "yourBudget": "Tú pagas"
+    },
+    "step1": {
+      "heading": "¿Qué tipo de tarea?",
+      "sub": "Elige la categoría que mejor se ajuste"
+    },
+    "step2": {
+      "descLabel": "Detalles de la tarea",
+      "descPlaceholder": "Describe qué necesita hacerse, dónde, y cualquier solicitud especial...",
+      "heading": "Describe tu tarea",
+      "sub": "Más detalles = mejores ofertas",
+      "tip": "Consejo: Sé específico sobre la ubicación, el tiempo y qué esperas",
+      "titleLabel": "Título de la tarea",
+      "titlePlaceholder": "p. ej., Mover sofá al 3er piso"
+    },
+    "step3": {
+      "areaLabel": "Área o barrio",
+      "areaPlaceholder": "p. ej., Defence, Gulberg, Clifton",
+      "budgetLabel": "Tu presupuesto (PKR)",
+      "cityLabel": "Ciudad",
+      "cityPlaceholder": "Selecciona tu ciudad",
+      "commissionDesc": "Asan Kaam cobra una pequeña tarifa para mantener la plataforma segura y funcionando",
+      "commissionTitle": "Cómo funciona nuestra tarifa",
+      "heading": "¿Dónde y cuánto?",
+      "sub": "La ubicación y el presupuesto ayudan a los taskers a encontrarte",
+      "taskerEarns": "El tasker gana",
+      "yourBudget": "Tú pagas"
+    },
+    "step4": {
+      "dateLabel": "¿Cuándo lo necesitas?",
+      "dateOptional": "Opcional",
+      "heading": "¿Cuándo debe completarse?",
+      "sub": "Establece una fecha límite o deja flexible",
+      "windowLabel": "Revisar y publicar"
+    },
+    "stepper": {
+      "ariaLabel": "Paso 4 de 4: Revisa los detalles de tu tarea"
+    },
+    "success": {
+      "browseTasks": "Explorar tareas",
+      "desc": "Los taskers cercanos comenzarán a hacer ofertas en tu tarea pronto.",
+      "heading": "¡Tarea Publicada!",
+      "viewTasks": "Ver Mis Tareas"
+    },
+    "urgency": {
+      "desc": "Marca como urgente para obtener respuestas más rápidas de los taskers.",
+      "title": "¿Es esto urgente?",
+      "toggleLabel": "Marcar como urgente"
+    }
+  },
+  "taskDetail": {
+    "actionCancel": "Cancelar Tarea",
+    "actionConfirmComplete": "Marcar Completada",
+    "actionLeaveReview": "Dejar Reseña",
+    "actionMarkInProgress": "Comenzar Trabajo",
+    "actionMessage": "Mensaje",
+    "actionOpenDispute": "Reportar Problema",
+    "actionRequestCompletion": "Solicitar Finalización",
+    "actionsTitle": "Acciones",
+    "agreedAmount": "Monto Acordado",
+    "assignedTasker": "Tasker Asignado",
+    "bidsReceived": "Ofertas Recibidas",
+    "bidsSubtitle": "Compara ofertas y elige la mejor opción",
+    "bidsTitle": "Ofertas",
+    "breadcrumbHome": "Inicio",
+    "breadcrumbTask": "Tarea",
+    "budget": "Presupuesto",
+    "cancelModalBody": "¿Estás seguro? Puedes republicar esta tarea en cualquier momento.",
+    "cancelModalConfirm": "Sí, Cancelar",
+    "cancelModalKeep": "Mantener Tarea",
+    "cancelModalTitle": "¿Cancelar Esta Tarea?",
+    "colAction": "Acción",
+    "colBid": "Oferta",
+    "colNote": "Nota",
+    "colRating": "Calificación",
+    "colTasker": "Tasker",
+    "colVerification": "Verificado",
+    "commissionNote": "Se aplica tarifa de plataforma al pagar",
+    "descriptionTitle": "Detalles de la Tarea",
+    "disputeModalBody": "Cuéntanos qué salió mal para que podamos ayudarte a resolverlo.",
+    "disputeModalCancel": "Cancelar",
+    "disputeModalPlaceholder": "Describe el problema...",
+    "disputeModalSubmit": "Enviar Reporte",
+    "disputeModalTitle": "Reportar un Problema",
+    "historyBy": "por",
+    "historyTitle": "Actividad",
+    "location": "Ubicación",
+    "placeBid": "Hacer una oferta",
+    "postedBy": "Publicado por",
+    "preferredDate": "Fecha preferida",
+    "selectTasker": "Seleccionar tasker",
+    "taskCancelledNote": "Esta tarea fue cancelada",
+    "taskDisputedNote": "Esta tarea tiene una disputa. Contacta con soporte para resolverla.",
+    "taskInfo": "Detalles de la tarea",
+    "taskProgress": "En progreso",
+    "timing": "Publicado hace 2 horas",
+    "urgentBadge": "Urgente",
+    "viewAsPoster": "Publicaste esto",
+    "viewAsTasker": "Estás asignado"
+  },
+  "testimonials": {
+    "eyebrow": "Gente real, trabajo real",
+    "heading": "Mira qué dicen otros"
+  },
+  "trust": {
+    "cta": "Comienza a ganar hoy",
+    "eyebrow": "Verificado y seguro",
+    "heading": "Trabaja con confianza",
+    "subheading": "Cada tasker está verificado. Cada pago está protegido."
+  },
+  "hero-welcome": [
+    "Verified taskers with ratings and work history",
+    "Transparent PKR pricing — no hidden charges",
+    "Safe in-app messaging — your contact details stay private",
+    "Available in Karachi, Lahore, Islamabad & more cities"
+  ],
+  "city-selector": [
+    {
+      "name": "Karachi",
+      "region": "Sindh's largest city",
+      "status": "now live"
+    },
+    {
+      "name": "Lahore",
+      "region": "Punjab's cultural capital",
+      "status": "now live"
+    },
+    {
+      "name": "Islamabad",
+      "region": "Federal capital",
+      "status": "now live"
+    },
+    {
+      "name": "Rawalpindi",
+      "region": "Twin city",
+      "status": "now live"
+    },
+    {
+      "name": "Faisalabad",
+      "region": "Punjab's industrial hub",
+      "status": "coming soon"
+    },
+    {
+      "name": "Multan",
+      "region": "City of Saints",
+      "status": "coming soon"
+    },
+    {
+      "name": "Peshawar",
+      "region": "Gateway to the North",
+      "status": "coming soon"
+    },
+    {
+      "name": "Quetta",
+      "region": "Capital of Balochistan",
+      "status": "coming soon"
+    }
+  ],
+  "task-filters": [
+    {
+      "label": "Category",
+      "desc": "Errands, Cleaning, Moving & Delivery, Small Repairs, Queue Standing, Digital Help, Household Assistance"
+    },
+    {
+      "label": "Budget",
+      "desc": "Set a PKR range from Rs 200 to Rs 50,000+"
+    },
+    {
+      "label": "Timing",
+      "desc": "Today, Tomorrow, This Week, Flexible"
+    },
+    {
+      "label": "Task Status",
+      "desc": "Open, Bid Received, Assigned (view only)"
+    },
+    {
+      "label": "Area / Neighbourhood",
+      "desc": "Filter within your selected city"
+    },
+    {
+      "label": "Urgency Boost",
+      "desc": "Show boosted tasks first for faster assignment"
+    }
+  ],
+  "task-feed": [
+    {
+      "title": "AC Servicing & Gas Refill",
+      "area": "DHA Phase 5, Karachi",
+      "budget": 3500,
+      "timing": "Today",
+      "bids": 4,
+      "urgent": true
+    },
+    {
+      "title": "Grocery Run from Imtiaz Store",
+      "area": "Gulshan-e-Iqbal, Karachi",
+      "budget": 600,
+      "timing": "Within 3 hours",
+      "bids": 2,
+      "urgent": false
+    },
+    {
+      "title": "Sofa & Wardrobe Move (2nd floor to ground)",
+      "area": "Johar Town, Lahore",
+      "budget": 4000,
+      "timing": "Tomorrow morning",
+      "bids": 0,
+      "urgent": false
+    },
+    {
+      "title": "CNIC Renewal Queue Standing",
+      "area": "NADRA Office, F-8, Islamabad",
+      "budget": 800,
+      "timing": "This week",
+      "bids": 1,
+      "urgent": false
+    },
+    {
+      "title": "Laptop Slow — Needs Cleanup & Antivirus",
+      "area": "Saddar, Rawalpindi",
+      "budget": 1200,
+      "timing": "Flexible",
+      "bids": 0,
+      "urgent": false
+    },
+    {
+      "title": "Deep Kitchen Cleaning (3-bedroom flat)",
+      "area": "Gulberg III, Lahore",
+      "budget": 2800,
+      "timing": "Saturday morning",
+      "bids": 3,
+      "urgent": false
+    },
+    {
+      "title": "Plumber Needed — Bathroom Tap Leaking",
+      "area": "North Nazimabad, Karachi",
+      "budget": 1500,
+      "timing": "Today",
+      "bids": 6,
+      "urgent": true
+    },
+    {
+      "title": "Parcel Delivery — Blue Area to G-9",
+      "area": "Islamabad",
+      "budget": 500,
+      "timing": "Within 2 hours",
+      "bids": 0,
+      "urgent": false
+    }
+  ],
+  "cta-post-task": [
+    "Free to post — no listing fee for posters",
+    "Receive bids within minutes from nearby taskers",
+    "Compare tasker profiles, ratings, and bid amounts before deciding",
+    "All communication stays safely inside the Asan Kaam app"
+  ],
+  "task-form-category": [
+    {
+      "label": "Errands & Shopping",
+      "desc": "Grocery runs, pharmacy pickups, bill payments, bank queues"
+    },
+    {
+      "label": "Moving & Delivery",
+      "desc": "Furniture shifting, parcel drop-off, loading/unloading help"
+    },
+    {
+      "label": "Cleaning",
+      "desc": "Home deep-clean, office cleaning, post-event tidying"
+    },
+    {
+      "label": "Small Repairs & Maintenance",
+      "desc": "Plumbing fixes, electrical fittings, furniture assembly"
+    },
+    {
+      "label": "Queue & Appointment Standing",
+      "desc": "NADRA, passport office, hospital registration queues"
+    },
+    {
+      "label": "Digital Help",
+      "desc": "Form filling, CV writing, mobile setup, social media assistance"
+    },
+    {
+      "label": "Household Assistance",
+      "desc": "Cooking help, childcare support, elderly companion tasks"
+    },
+    {
+      "label": "Other",
+      "desc": "Describe your task and we'll match you with the right tasker"
+    }
+  ],
+  "task-form-details": [
+    {
+      "label": "Task title",
+      "desc": "A short, searchable name (e.g. 'Shift 2-bedroom flat in Gulshan-e-Iqbal')"
+    },
+    {
+      "label": "Full description",
+      "desc": "Step-by-step instructions, special requirements, access details"
+    },
+    {
+      "label": "Attach a photo (optional)",
+      "desc": "Helps taskers understand the scope before bidding"
+    },
+    {
+      "label": "Note",
+      "desc": "Phone numbers, emails, and social handles are not permitted in the description and will be automatically removed for your safety"
+    }
+  ],
+  "task-form-location-budget": [
+    {
+      "label": "City",
+      "desc": "Choose from currently active cities (Karachi, Lahore, Islamabad, Rawalpindi, Faisalabad)"
+    },
+    {
+      "label": "Area / Neighbourhood",
+      "desc": "e.g. DHA Phase 6, F-10 Markaz, Johar Town, Saddar"
+    },
+    {
+      "label": "Your budget (PKR)",
+      "desc": "The maximum you are willing to pay; taskers may bid lower"
+    },
+    {
+      "label": "Budget tip",
+      "desc": "Tasks under PKR 500 attract quick bids for short errands; larger jobs over PKR 2,000 benefit from a detailed description to justify the rate"
+    }
+  ],
+  "task-form-timing": [
+    {
+      "label": "Preferred date",
+      "desc": "Pick a specific date or select 'As soon as possible'"
+    },
+    {
+      "label": "Time window",
+      "desc": "Morning (8 am–12 pm), Afternoon (12 pm–5 pm), Evening (5 pm–9 pm), or Flexible"
+    },
+    {
+      "label": "Estimated duration",
+      "desc": "Less than 1 hour, 1–3 hours, half day, full day, multi-day"
+    },
+    {
+      "label": "Flexible timing",
+      "desc": "Toggle on if you are happy for the tasker to propose a mutually convenient slot after assignment"
+    }
+  ],
+  "urgency-boost-preview": [
+    {
+      "label": "Standard listing",
+      "desc": "Free, appears in the task feed in chronological order"
+    },
+    {
+      "label": "Urgency Boost",
+      "desc": "PKR 99 for 24-hour top placement in your city's feed"
+    },
+    {
+      "label": "Boost badge",
+      "desc": "Your task displays a highlighted 'Urgent' chip so taskers prioritise it"
+    },
+    {
+      "label": "Confirmation",
+      "desc": "You will be shown the exact boost price and asked to confirm before any charge is applied to your account balance"
+    }
+  ],
+  "submit-review": [
+    {
+      "label": "Category",
+      "desc": "Confirmed category label shown for final review"
+    },
+    {
+      "label": "Task title & description",
+      "desc": "Full text displayed for proofreading"
+    },
+    {
+      "label": "Location",
+      "desc": "City and area confirmed"
+    },
+    {
+      "label": "Budget",
+      "desc": "PKR amount displayed prominently"
+    },
+    {
+      "label": "Timing",
+      "desc": "Date, time window, and estimated duration"
+    },
+    {
+      "label": "Urgency Boost",
+      "desc": "Shown as 'Active' or 'Not added'"
+    },
+    {
+      "label": "Agreement",
+      "desc": "By posting, you agree to Asan Kaam's community guidelines and confirm that no off-platform contact details are included in your task description"
+    }
+  ],
+  "task-list-filters": [
+    {
+      "label": "All Tasks",
+      "desc": "Show every task regardless of status"
+    },
+    {
+      "label": "Open",
+      "desc": "Tasks currently accepting bids from taskers"
+    },
+    {
+      "label": "Bid Received",
+      "desc": "Tasks with one or more pending bids awaiting your review"
+    },
+    {
+      "label": "Assigned",
+      "desc": "Tasks you've assigned to a tasker, awaiting start"
+    },
+    {
+      "label": "In Progress",
+      "desc": "Tasks your tasker has actively begun"
+    },
+    {
+      "label": "Completion Requested",
+      "desc": "Tasker has marked the job done; your confirmation is needed"
+    },
+    {
+      "label": "Completed",
+      "desc": "Fully finished and rated tasks"
+    },
+    {
+      "label": "Cancelled",
+      "desc": "Tasks you or the tasker cancelled before completion"
+    },
+    {
+      "label": "Disputed",
+      "desc": "Tasks currently under admin review"
+    }
+  ],
+  "task-cards-summary": [
+    {
+      "title": "Ghar ki safai",
+      "area": "Gulberg, Lahore",
+      "budget": 1500,
+      "bids": 4,
+      "status": "bid_received",
+      "meta": "Posted 2 hours ago"
+    },
+    {
+      "title": "Grocery pickup from Imtiaz",
+      "area": "DHA Phase 5, Karachi",
+      "budget": 600,
+      "bids": 2,
+      "status": "assigned",
+      "meta": "Tasker: Hamza R."
+    },
+    {
+      "title": "AC repair & gas refill",
+      "area": "F-7, Islamabad",
+      "budget": 3200,
+      "bids": 1,
+      "status": "in_progress",
+      "meta": "Started today"
+    },
+    {
+      "title": "CNIC form submission at NADRA",
+      "area": "Saddar, Rawalpindi",
+      "budget": 400,
+      "bids": 1,
+      "status": "completion_requested",
+      "meta": "Awaiting your confirmation"
+    },
+    {
+      "title": "Furniture assembly (2 wardrobes)",
+      "area": "Johar Town, Lahore",
+      "budget": 2000,
+      "bids": 1,
+      "status": "completed",
+      "meta": "Rated 4.8 stars — 3 days ago"
+    },
+    {
+      "title": "Laptop screen replacement",
+      "area": "North Nazimabad, Karachi",
+      "budget": 800,
+      "bids": 0,
+      "status": "open",
+      "meta": "Posted 15 minutes ago"
+    },
+    {
+      "title": "Plumber for leaking pipe",
+      "area": "G-11, Islamabad",
+      "budget": 1200,
+      "bids": 0,
+      "status": "cancelled",
+      "meta": "Released on 12 Jun"
+    },
+    {
+      "title": "Tuition centre admission queue",
+      "area": "Gulshan-e-Iqbal, Karachi",
+      "budget": 350,
+      "bids": 1,
+      "status": "disputed",
+      "meta": "Under admin review"
+    }
+  ],
+  "task-actions-menu": [
+    {
+      "label": "Review Bids",
+      "desc": "Compare tasker profiles, ratings, and bid amounts side by side before you choose"
+    },
+    {
+      "label": "Assign Tasker",
+      "desc": "Select the best bid and confirm the assignment to lock in your tasker"
+    },
+    {
+      "label": "Message Tasker",
+      "desc": "Open the in-app chat to coordinate details safely, without sharing personal contact info"
+    },
+    {
+      "label": "Confirm Completion",
+      "desc": "Once your tasker marks the job done, review and confirm to release payment"
+    },
+    {
+      "label": "Rate & Review",
+      "desc": "Share honest feedback after completion to help the community choose great taskers"
+    },
+    {
+      "label": "Boost Task",
+      "desc": "Add an urgency badge to your open task to attract bids faster (PKR shown before purchase)"
+    },
+    {
+      "label": "Cancel Task",
+      "desc": "Cancel an open or assigned task; commission reservation is released automatically"
+    },
+    {
+      "label": "Raise a Dispute",
+      "desc": "If something went wrong, open a dispute and upload evidence for admin review"
+    },
+    {
+      "label": "Repost Task",
+      "desc": "Quickly duplicate a completed or cancelled task to post it again with one tap"
+    }
+  ]
+}
