@@ -1,18 +1,17 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { motion } from "framer-motion";
-import { useTranslations } from "next-intl";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { Plus, Filter, ChevronDown, MoreVertical, Eye, X, Zap, MapPin, Clock, Tag, Users, CheckCircle, AlertCircle, FileText, Loader, Star, TrendingUp, ClipboardList } from 'lucide-react';
+import { Plus, Eye, X, Zap, MapPin, Users, CheckCircle, AlertCircle, FileText, Loader, ClipboardList, TrendingUp, Star, ChevronRight } from 'lucide-react';
 import { Reveal } from "@/components/Reveal";
 import { cn } from "@/lib/utils";
-import { getStatusLabel, getStatusColor, TaskStatus, TaskCategory } from "@/lib/data";
-type formatPkr = any;
-const formatPkr: any = [];
-type TimingWindow = any;
-const TimingWindow: any = [];
+import { getStatusLabel, getStatusColor, formatPKR, TaskStatus, TaskCategory } from "@/lib/data";
 import { staggerContainer, fadeInUp } from "@/lib/motion";
+
+const formatPkr = (amount: number) => formatPKR(amount ?? 0);
+
+type TimingWindow = string;
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 
@@ -35,7 +34,7 @@ const MOCK_TASKS: MockTask[] = [
   {
     id: "t1",
     title: "Grocery shopping from Imtiaz Store, Gulshan",
-    category: "errands",
+    category: "Errands & Shopping",
     area: "Gulshan-e-Iqbal",
     city: "Karachi",
     budgetPkr: 800,
@@ -49,7 +48,7 @@ const MOCK_TASKS: MockTask[] = [
   {
     id: "t2",
     title: "Move 3 boxes from DHA Phase 5 to Clifton",
-    category: "moving_delivery",
+    category: "Moving & Delivery",
     area: "DHA Phase 5",
     city: "Karachi",
     budgetPkr: 2500,
@@ -63,7 +62,7 @@ const MOCK_TASKS: MockTask[] = [
   {
     id: "t3",
     title: "Deep clean 2-bedroom apartment before move-in",
-    category: "cleaning",
+    category: "Cleaning",
     area: "Bahria Town",
     city: "Lahore",
     budgetPkr: 3500,
@@ -76,7 +75,7 @@ const MOCK_TASKS: MockTask[] = [
   {
     id: "t4",
     title: "Fix leaking kitchen tap and replace washers",
-    category: "small_repairs",
+    category: "Small Repairs & Maintenance",
     area: "F-7",
     city: "Islamabad",
     budgetPkr: 1200,
@@ -90,7 +89,7 @@ const MOCK_TASKS: MockTask[] = [
   {
     id: "t5",
     title: "Stand in queue at NADRA office for token",
-    category: "queue_standing",
+    category: "Queue & Appointment Standing",
     area: "Saddar",
     city: "Rawalpindi",
     budgetPkr: 600,
@@ -104,7 +103,7 @@ const MOCK_TASKS: MockTask[] = [
   {
     id: "t6",
     title: "Help set up new laptop and install software",
-    category: "digital_help",
+    category: "Digital Help",
     area: "Johar Town",
     city: "Lahore",
     budgetPkr: 1500,
@@ -117,7 +116,7 @@ const MOCK_TASKS: MockTask[] = [
   {
     id: "t7",
     title: "Ironing and folding laundry — 2 bags",
-    category: "household_assistance",
+    category: "Household Assistance",
     area: "Gulberg III",
     city: "Lahore",
     budgetPkr: 700,
@@ -130,7 +129,7 @@ const MOCK_TASKS: MockTask[] = [
   {
     id: "t8",
     title: "Pick up prescription from pharmacy and deliver home",
-    category: "errands",
+    category: "Errands & Shopping",
     area: "G-11",
     city: "Islamabad",
     budgetPkr: 400,
@@ -143,7 +142,7 @@ const MOCK_TASKS: MockTask[] = [
   {
     id: "t9",
     title: "Assemble IKEA-style bookshelf (6 shelves)",
-    category: "small_repairs",
+    category: "Small Repairs & Maintenance",
     area: "DHA Phase 2",
     city: "Islamabad",
     budgetPkr: 1800,
@@ -156,321 +155,72 @@ const MOCK_TASKS: MockTask[] = [
   {
     id: "t10",
     title: "Deliver birthday cake from bakery to venue",
-    category: "moving_delivery",
+    category: "Moving & Delivery",
     area: "Clifton",
     city: "Karachi",
     budgetPkr: 500,
-    timing: "evening",
+    timing: "afternoon",
     status: "completion_requested",
     bidCount: 3,
     isUrgent: true,
-    createdAt: "2024-06-10T17:00:00Z",
-    preferredDate: "2024-06-11",
+    createdAt: "2024-06-11T11:00:00Z",
+    preferredDate: "2024-06-12",
   },
 ];
 
-// ─── Filter Tabs ──────────────────────────────────────────────────────────────
+// ─── Status filter tabs ───────────────────────────────────────────────────────
 
-type FilterKey = "all" | TaskStatus;
-
-const FILTER_TABS: { key: FilterKey; label: string }[] = [
-  { key: "all", label: "All Tasks" },
-  { key: "open", label: "Open" },
-  { key: "bid_received", label: "Bids Received" },
-  { key: "assigned", label: "Assigned" },
-  { key: "in_progress", label: "In Progress" },
-  { key: "completion_requested", label: "Completion Req." },
-  { key: "completed", label: "Completed" },
-  { key: "disputed", label: "Disputed" },
-  { key: "cancelled", label: "Cancelled" },
+const STATUS_FILTERS: Array<{ key: TaskStatus | "all" }> = [
+  { key: "all" },
+  { key: "open" },
+  { key: "bid_received" },
+  { key: "assigned" },
+  { key: "in_progress" },
+  { key: "completion_requested" },
+  { key: "completed" },
+  { key: "cancelled" },
+  { key: "disputed" },
 ];
 
-// ─── Category Labels ──────────────────────────────────────────────────────────
+// ─── Left border color by status ─────────────────────────────────────────────
 
-const CATEGORY_LABELS: Record<TaskCategory, string> = {
-  errands: "Errands & Shopping",
-  moving_delivery: "Moving & Delivery",
-  cleaning: "Cleaning",
-  small_repairs: "Small Repairs",
-  queue_standing: "Queue Standing",
-  digital_help: "Digital Help",
-  household_assistance: "Household Help",
-  other: "Other",
-};
-
-const TIMING_LABELS: Record<TimingWindow, string> = {
-  morning: "Morning",
-  afternoon: "Afternoon",
-  evening: "Evening",
-  flexible: "Flexible",
-  asap: "ASAP",
-};
-
-// ─── Stat Card ────────────────────────────────────────────────────────────────
-
-function StatCard({
-  icon: Icon,
-  value,
-  label,
-  accent,
-}: {
-  icon: React.ElementType;
-  value: number | string;
-  label: string;
-  accent?: boolean;
-}) {
-  return (
-    <motion.div
-      whileHover={{ y: -2, scale: 1.01 }}
-      transition={{ duration: 0.2 }}
-      className={cn(
-        "rounded-2xl border p-5 flex items-center gap-4",
-        "border-[hsl(var(--border))] bg-[hsl(var(--card))]",
-        "shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_16px_-4px_rgba(0,0,0,0.08)]"
-      )}
-    >
-      <div
-        className={cn(
-          "h-11 w-11 rounded-xl flex items-center justify-center flex-shrink-0",
-          accent
-            ? "bg-[var(--accent)]/15"
-            : "bg-[hsl(var(--muted))]/60"
-        )}
-      >
-        <Icon
-          className={cn(
-            "h-5 w-5",
-            accent ? "text-[var(--accent)]" : "text-[hsl(var(--muted-foreground))]"
-          )}
-          aria-hidden="true"
-        />
-      </div>
-      <div>
-        <div className="text-2xl font-bold text-[hsl(var(--foreground))] leading-none">
-          {value}
-        </div>
-        <div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{label}</div>
-      </div>
-    </motion.div>
-  );
+function getStatusBorderColor(status: TaskStatus): string {
+  switch (status) {
+    case "open": return "border-l-[var(--primary)]";
+    case "bid_received": return "border-l-[var(--accent)]";
+    case "assigned": return "border-l-blue-500";
+    case "in_progress": return "border-l-indigo-500";
+    case "completion_requested": return "border-l-purple-500";
+    case "completed": return "border-l-emerald-500";
+    case "cancelled": return "border-l-[var(--destructive)]";
+    case "disputed": return "border-l-red-700";
+    case "draft": return "border-l-gray-400";
+    default: return "border-l-gray-300";
+  }
 }
 
-// ─── Status Chip ──────────────────────────────────────────────────────────────
+// ─── Status icon ─────────────────────────────────────────────────────────────
 
-function StatusChip({ status }: { status: TaskStatus }) {
-  const color = getStatusColor(status);
-  const label = getStatusLabel(status);
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold border",
-        color
-      )}
-    >
-      {label}
-    </span>
-  );
+function StatusIcon({ status }: { status: TaskStatus }) {
+  switch (status) {
+    case "completed": return <CheckCircle className="w-3.5 h-3.5" />;
+    case "cancelled": return <X className="w-3.5 h-3.5" />;
+    case "disputed": return <AlertCircle className="w-3.5 h-3.5" />;
+    case "in_progress": return <Loader className="w-3.5 h-3.5 animate-spin" />;
+    case "bid_received": return <Users className="w-3.5 h-3.5" />;
+    case "assigned": return <CheckCircle className="w-3.5 h-3.5" />;
+    case "completion_requested": return <Star className="w-3.5 h-3.5" />;
+    default: return <FileText className="w-3.5 h-3.5" />;
+  }
 }
 
-// ─── Quick Action Menu ────────────────────────────────────────────────────────
+// ─── Stat pill ────────────────────────────────────────────────────────────────
 
-function QuickActionMenu({
-  task,
-  onClose,
-}: {
-  task: MockTask;
-  onClose: () => void;
-}) {
-  const canCancel =
-    task.status === "open" ||
-    task.status === "bid_received" ||
-    task.status === "draft";
-  const canBoost = task.status === "open" || task.status === "bid_received";
-
+function StatPill({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.92, y: -8 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.92, y: -8 }}
-      transition={{ duration: 0.15 }}
-      className="absolute right-0 top-8 z-30 w-48 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-[0_8px_32px_-8px_rgba(0,0,0,0.18)] overflow-hidden"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <Link
-        href={`/task/${task.id}`}
-        onClick={onClose}
-        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]/50 transition-colors"
-      >
-        <Eye className="h-4 w-4 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
-        View Bids
-      </Link>
-      {canBoost && (
-        <button
-          onClick={onClose}
-          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]/50 transition-colors"
-        >
-          <Zap className="h-4 w-4 text-amber-500" aria-hidden="true" />
-          Boost Task
-        </button>
-      )}
-      {canCancel && (
-        <button
-          onClick={onClose}
-          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-        >
-          <X className="h-4 w-4" aria-hidden="true" />
-          Cancel Task
-        </button>
-      )}
-    </motion.div>
-  );
-}
-
-// ─── Task Summary Card ────────────────────────────────────────────────────────
-
-function TaskSummaryCard({ task }: { task: MockTask }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  const formattedDate = new Date(task.createdAt).toLocaleDateString("en-PK", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-
-  return (
-    <motion.div
-      whileHover={{ y: -1 }}
-      transition={{ duration: 0.18 }}
-      className="relative rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_16px_-4px_rgba(0,0,0,0.07)] hover:shadow-[0_2px_4px_rgba(0,0,0,0.06),0_8px_24px_-8px_rgba(0,0,0,0.12)] transition-shadow"
-    >
-      {/* Top row */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            {task.isUrgent && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 px-2 py-0.5 text-xs font-semibold">
-                <Zap className="h-3 w-3" aria-hidden="true" />
-                Urgent
-              </span>
-            )}
-            <StatusChip status={task.status} />
-          </div>
-          <Link href={`/task/${task.id}`}>
-            <h3 className="mt-2 text-base font-semibold text-[hsl(var(--foreground))] leading-snug hover:text-[var(--accent)] transition-colors line-clamp-2">
-              {task.title}
-            </h3>
-          </Link>
-        </div>
-
-        {/* Action menu */}
-        <div className="relative flex-shrink-0">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setMenuOpen((v) => !v);
-            }}
-            aria-label="Task actions"
-            className="h-8 w-8 rounded-lg flex items-center justify-center text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))]/60 hover:text-[hsl(var(--foreground))] transition-colors"
-          >
-            <MoreVertical className="h-4 w-4" aria-hidden="true" />
-          </button>
-          {menuOpen && (
-            <QuickActionMenu task={task} onClose={() => setMenuOpen(false)} />
-          )}
-        </div>
-      </div>
-
-      {/* Meta row */}
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-[hsl(var(--muted-foreground))]">
-        <span className="flex items-center gap-1">
-          <Tag className="h-3.5 w-3.5" aria-hidden="true" />
-          {CATEGORY_LABELS[task.category]}
-        </span>
-        <span className="flex items-center gap-1">
-          <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-          {task.area}, {task.city}
-        </span>
-        <span className="flex items-center gap-1">
-          <Clock className="h-3.5 w-3.5" aria-hidden="true" />
-          {TIMING_LABELS[task.timing]}
-        </span>
-      </div>
-
-      {/* Bottom row */}
-      <div className="mt-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="text-lg font-bold text-[var(--accent)]">
-            {formatPkr(task.budgetPkr)}
-          </span>
-          <span className="flex items-center gap-1 rounded-full bg-[hsl(var(--muted))]/60 px-2.5 py-0.5 text-xs font-medium text-[hsl(var(--muted-foreground))]">
-            <Users className="h-3.5 w-3.5" aria-hidden="true" />
-            {task.bidCount} {task.bidCount === 1 ? "bid" : "bids"}
-          </span>
-        </div>
-        <span className="text-xs text-[hsl(var(--muted-foreground))]">
-          Posted {formattedDate}
-        </span>
-      </div>
-
-      {/* View bids CTA for bid_received */}
-      {task.status === "bid_received" && task.bidCount > 0 && (
-        <Link
-          href={`/task/${task.id}`}
-          className="mt-3 flex items-center justify-center gap-1.5 w-full rounded-xl bg-[var(--accent)]/10 hover:bg-[var(--accent)]/20 text-[var(--accent)] text-sm font-semibold py-2 transition-colors"
-        >
-          <Eye className="h-4 w-4" aria-hidden="true" />
-          Review {task.bidCount} Bids
-        </Link>
-      )}
-
-      {/* Completion requested banner */}
-      {task.status === "completion_requested" && (
-        <div className="mt-3 flex items-center gap-2 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 px-3 py-2 text-xs text-blue-700 dark:text-blue-300 font-medium">
-          <CheckCircle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-          Tasker has marked this complete. Please confirm or raise a dispute.
-        </div>
-      )}
-
-      {/* Disputed banner */}
-      {task.status === "disputed" && (
-        <div className="mt-3 flex items-center gap-2 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 px-3 py-2 text-xs text-red-700 dark:text-red-300 font-medium">
-          <AlertCircle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-          Dispute under review by Asan Kaam support.
-        </div>
-      )}
-    </motion.div>
-  );
-}
-
-// ─── Empty State ──────────────────────────────────────────────────────────────
-
-function EmptyState({ filter }: { filter: FilterKey }) {
-  const isAll = filter === "all";
-  return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <div className="h-20 w-20 rounded-2xl bg-[hsl(var(--muted))]/50 flex items-center justify-center mb-5">
-        <ClipboardList
-          className="h-10 w-10 text-[hsl(var(--muted-foreground))]/50"
-          aria-hidden="true"
-        />
-      </div>
-      <h3 className="text-lg font-semibold text-[hsl(var(--foreground))]">
-        {isAll ? "No tasks yet" : `No ${filter.replace("_", " ")} tasks`}
-      </h3>
-      <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))] max-w-xs">
-        {isAll
-          ? "Post your first task and get competitive bids from verified taskers near you."
-          : "You have no tasks in this status right now."}
-      </p>
-      {isAll && (
-        <Link
-          href="/post-task"
-          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-black hover:opacity-90 transition-opacity shadow-[0_2px_12px_rgba(0,0,0,0.12)]"
-        >
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          Post Your First Task
-        </Link>
-      )}
+    <div className={cn("flex flex-col items-center px-4 py-2 rounded-xl border", color)}>
+      <span className="text-xl font-bold leading-none">{value}</span>
+      <span className="text-xs mt-0.5 font-medium opacity-80">{label}</span>
     </div>
   );
 }
@@ -478,235 +228,378 @@ function EmptyState({ filter }: { filter: FilterKey }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MyTasksPage() {
-  const t = useTranslations();
-  const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
-  const [sortBy, setSortBy] = useState<"newest" | "budget" | "bids">("newest");
-  const [sortOpen, setSortOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<TaskStatus | "all">("all");
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [cancelledIds, setCancelledIds] = useState<Set<string>>(new Set());
 
-  // Derived stats
-  const stats = useMemo(() => {
-    const total = MOCK_TASKS.length;
-    const activeBids = MOCK_TASKS.reduce((sum, t) => sum + t.bidCount, 0);
-    const completed = MOCK_TASKS.filter((t) => t.status === "completed").length;
-    const disputed = MOCK_TASKS.filter((t) => t.status === "disputed").length;
-    return { total, activeBids, completed, disputed };
-  }, []);
+  // Merge cancelled state into tasks
+  const tasks = useMemo(
+    () =>
+      MOCK_TASKS.map((t) =>
+        cancelledIds.has(t.id) ? { ...t, status: "cancelled" as TaskStatus } : t
+      ),
+    [cancelledIds]
+  );
 
-  // Filtered + sorted tasks
-  const filteredTasks = useMemo(() => {
-    let tasks =
+  const filteredTasks = useMemo(
+    () =>
       activeFilter === "all"
-        ? MOCK_TASKS
-        : MOCK_TASKS.filter((t) => t.status === activeFilter);
+        ? tasks
+        : tasks.filter((t) => t.status === activeFilter),
+    [tasks, activeFilter]
+  );
 
-    if (sortBy === "newest") {
-      tasks = [...tasks].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-    } else if (sortBy === "budget") {
-      tasks = [...tasks].sort((a, b) => b.budgetPkr - a.budgetPkr);
-    } else if (sortBy === "bids") {
-      tasks = [...tasks].sort((a, b) => b.bidCount - a.bidCount);
-    }
+  // Stats
+  const stats = useMemo(() => ({
+    total: tasks.length,
+    active: tasks.filter((t) =>
+      ["open", "bid_received", "assigned", "in_progress", "completion_requested"].includes(t.status)
+    ).length,
+    completed: tasks.filter((t) => t.status === "completed").length,
+    cancelled: tasks.filter((t) => t.status === "cancelled").length,
+  }), [tasks]);
 
-    return tasks;
-  }, [activeFilter, sortBy]);
+  function handleCancel(id: string) {
+    setCancellingId(id);
+  }
 
-  const sortLabels: Record<string, string> = {
-    newest: "Newest First",
-    budget: "Highest Budget",
-    bids: "Most Bids",
-  };
+  function confirmCancel(id: string) {
+    setCancelledIds((prev) => new Set([...prev, id]));
+    setCancellingId(null);
+  }
+
+  function dismissCancel() {
+    setCancellingId(null);
+  }
+
+  const canCancel = (status: TaskStatus) =>
+    ["open", "bid_received"].includes(status);
 
   return (
-    <main className="min-h-screen bg-[hsl(var(--background))]">
-      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
-
-        {/* ── Page Header ── */}
-        <Reveal>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="min-h-screen bg-[var(--background)]">
+      {/* ── Page Header ── */}
+      <div className="bg-[var(--card)] border-b border-[var(--border)] shadow-[0_1px_4px_rgba(26,26,46,0.06)]">
+        <div className="container py-5 md:py-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            {/* Title block */}
             <div>
-              <h1 className="text-3xl font-bold tracking-tight text-[hsl(var(--foreground))]">
-                {t("myTasks.heading")}
-              </h1>
-              <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
-                {t("myTasks.subheading")}
-              </p>
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-9 h-9 rounded-xl bg-[var(--primary)] flex items-center justify-center flex-shrink-0">
+                  <ClipboardList className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-[var(--foreground)] leading-tight">
+                    Mere Kaam
+                  </h1>
+                  <p className="text-sm text-[var(--muted-foreground)] font-medium" dir="rtl" lang="ur">
+                    میرے کام
+                  </p>
+                </div>
+              </div>
             </div>
+
+            {/* Post new task CTA */}
             <Link
               href="/post-task"
-              className="inline-flex items-center gap-2 self-start sm:self-auto rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-black hover:opacity-90 transition-opacity shadow-[0_2px_12px_rgba(0,0,0,0.12)]"
+              className="btn-primary self-start sm:self-auto flex items-center gap-2 text-sm"
             >
-              <Plus className="h-4 w-4" aria-hidden="true" />
-              {t("myTasks.postNewTask")}
+              <Plus className="w-4 h-4" />
+              Naya Kaam Post Karo
             </Link>
           </div>
-        </Reveal>
 
-        {/* ── Stats Row ── */}
-        <Reveal delay={0.05}>
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            animate="visible"
-            className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4"
-          >
-            <motion.div variants={fadeInUp}>
-              <StatCard
-                icon={FileText}
-                value={stats.total}
-                label={t("myTasks.stats.total")}
-                accent
-              />
-            </motion.div>
-            <motion.div variants={fadeInUp}>
-              <StatCard
-                icon={TrendingUp}
-                value={stats.activeBids}
-                label={t("myTasks.stats.activeBids")}
-              />
-            </motion.div>
-            <motion.div variants={fadeInUp}>
-              <StatCard
-                icon={CheckCircle}
-                value={stats.completed}
-                label={t("myTasks.stats.completed")}
-              />
-            </motion.div>
-            <motion.div variants={fadeInUp}>
-              <StatCard
-                icon={AlertCircle}
-                value={stats.disputed}
-                label={t("myTasks.stats.disputed")}
-              />
-            </motion.div>
-          </motion.div>
-        </Reveal>
-
-        {/* ── Filter Bar ── */}
-        <Reveal delay={0.08}>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            {/* Status chips */}
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-              {FILTER_TABS.map((tab) => {
-                const count =
-                  tab.key === "all"
-                    ? MOCK_TASKS.length
-                    : MOCK_TASKS.filter((t) => t.status === tab.key).length;
-                return (
-                  <button
-                    key={tab.key}
-                    onClick={() => setActiveFilter(tab.key)}
-                    className={cn(
-                      "flex-shrink-0 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold border transition-all duration-200",
-                      activeFilter === tab.key
-                        ? "bg-[var(--accent)] text-black border-[var(--accent)] shadow-sm"
-                        : "bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] border-[hsl(var(--border))] hover:border-[var(--accent)]/50 hover:text-[hsl(var(--foreground))]"
-                    )}
-                  >
-                    {tab.label}
-                    {count > 0 && (
-                      <span
-                        className={cn(
-                          "rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none",
-                          activeFilter === tab.key
-                            ? "bg-black/15 text-black"
-                            : "bg-[hsl(var(--muted))]/70 text-[hsl(var(--muted-foreground))]"
-                        )}
-                      >
-                        {count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Sort dropdown */}
-            <div className="relative flex-shrink-0">
-              <button
-                onClick={() => setSortOpen((v) => !v)}
-                className="inline-flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3.5 py-2 text-xs font-medium text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]/50 transition-colors"
-              >
-                <Filter className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
-                {sortLabels[sortBy]}
-                <ChevronDown className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
-              </button>
-              {sortOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="absolute right-0 top-10 z-20 w-44 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-[0_8px_32px_-8px_rgba(0,0,0,0.18)] overflow-hidden"
-                >
-                  {(["newest", "budget", "bids"] as const).map((opt) => (
-                    <button
-                      key={opt}
-                      onClick={() => {
-                        setSortBy(opt);
-                        setSortOpen(false);
-                      }}
-                      className={cn(
-                        "w-full text-left px-4 py-2.5 text-sm transition-colors",
-                        sortBy === opt
-                          ? "text-[var(--accent)] font-semibold bg-[var(--accent)]/8"
-                          : "text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]/50"
-                      )}
-                    >
-                      {sortLabels[opt]}
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </div>
+          {/* Stats row */}
+          <div className="flex gap-3 mt-4 overflow-x-auto pb-1 scrollbar-hide">
+            <StatPill
+              label="Kul Kaam"
+              value={stats.total}
+              color="border-[var(--border)] bg-[var(--background)] text-[var(--foreground)]"
+            />
+            <StatPill
+              label="Chal Rahe"
+              value={stats.active}
+              color="border-blue-200 bg-blue-50 text-blue-700"
+            />
+            <StatPill
+              label="Mukammal"
+              value={stats.completed}
+              color="border-emerald-200 bg-emerald-50 text-emerald-700"
+            />
+            <StatPill
+              label="Mansookh"
+              value={stats.cancelled}
+              color="border-red-200 bg-red-50 text-red-700"
+            />
           </div>
-        </Reveal>
+        </div>
+      </div>
+
+      <div className="container py-5 md:py-7">
+        {/* ── Status Filter Tabs ── */}
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-5 scrollbar-hide">
+          {STATUS_FILTERS.map(({ key }) => {
+            const isActive = activeFilter === key;
+            const label = key === "all" ? "Sab Kaam" : getStatusLabel(key as TaskStatus);
+            return (
+              <button
+                key={key}
+                onClick={() => setActiveFilter(key)}
+                className={cn(
+                  "flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 whitespace-nowrap",
+                  isActive
+                    ? "bg-[var(--primary)] text-white border-[var(--primary)] shadow-sm"
+                    : "bg-[var(--card)] text-[var(--muted-foreground)] border-[var(--border)] hover:border-[var(--primary)] hover:text-[var(--primary)]"
+                )}
+              >
+                {label}
+                {key !== "all" && (
+                  <span className={cn(
+                    "ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold",
+                    isActive ? "bg-white/20 text-white" : "bg-[var(--background)] text-[var(--muted-foreground)]"
+                  )}>
+                    {tasks.filter((t) => t.status === key).length}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
 
         {/* ── Task List ── */}
-        <Reveal delay={0.1}>
+        <AnimatePresence mode="wait">
           {filteredTasks.length === 0 ? (
-            <EmptyState filter={activeFilter} />
+            <motion.div
+              key="empty"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.3 }}
+              className="flex flex-col items-center justify-center py-20 text-center"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-[var(--border)] flex items-center justify-center mb-4">
+                <ClipboardList className="w-8 h-8 text-[var(--muted-foreground)]" />
+              </div>
+              <h2 className="text-lg font-bold text-[var(--foreground)] mb-1">
+                Abhi Koi Kaam Nahi
+              </h2>
+              <p className="text-sm text-[var(--muted-foreground)] mb-1" dir="rtl" lang="ur">
+                ابھی کوئی کام نہیں
+              </p>
+              <p className="text-sm text-[var(--muted-foreground)] mb-6 max-w-xs">
+                Is filter mein koi kaam nahi mila. Naya kaam post karo aur qareeb ke taskers se bids hasil karo.
+              </p>
+              <Link href="/post-task" className="btn-primary text-sm">
+                <Plus className="w-4 h-4" />
+                Pehla Kaam Post Karo
+              </Link>
+            </motion.div>
           ) : (
             <motion.div
-              key={activeFilter + sortBy}
+              key={activeFilter}
               variants={staggerContainer}
               initial="hidden"
               animate="visible"
-              className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2"
+              className="flex flex-col gap-3"
             >
-              {filteredTasks.map((task, i) => (
-                <motion.div key={task.id} variants={fadeInUp} custom={i}>
-                  <TaskSummaryCard task={task} />
+              {filteredTasks.map((task) => (
+                <motion.div
+                  key={task.id}
+                  variants={fadeInUp}
+                  layout
+                  className={cn(
+                    "bg-[var(--card)] rounded-xl border border-[var(--border)] border-l-4 shadow-[0_1px_4px_rgba(26,26,46,0.06)] overflow-hidden",
+                    getStatusBorderColor(task.status)
+                  )}
+                >
+                  <div className="p-4">
+                    {/* Top row: title + badges */}
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                          {task.isUrgent && (
+                            <span className="badge-urgent flex items-center gap-1">
+                              <Zap className="w-3 h-3" />
+                              Urgent
+                            </span>
+                          )}
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[var(--background)] border border-[var(--border)] text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wide">
+                            {task.category}
+                          </span>
+                        </div>
+                        <h3 className="font-bold text-[var(--foreground)] text-sm leading-snug line-clamp-2">
+                          {task.title}
+                        </h3>
+                      </div>
+
+                      {/* Status badge */}
+                      <span
+                        className={cn(
+                          "flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold border",
+                          getStatusColor(task.status)
+                        )}
+                      >
+                        <StatusIcon status={task.status} />
+                        {getStatusLabel(task.status)}
+                      </span>
+                    </div>
+
+                    {/* Meta row */}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--muted-foreground)] mb-3">
+                      <span className="flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-[var(--primary)]" />
+                        {task.area}, {task.city}
+                      </span>
+                      {task.bidCount > 0 && (
+                        <span className="flex items-center gap-1">
+                          <Users className="w-3.5 h-3.5 text-[var(--accent)]" />
+                          <span className="font-semibold text-[var(--accent)]">{task.bidCount}</span> bid{task.bidCount !== 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Budget + Actions */}
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <span className="text-xs text-[var(--muted-foreground)] block leading-none mb-0.5">Budget</span>
+                        <span className="pkr-amount text-base">{formatPkr(task.budgetPkr)}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {/* Cancel */}
+                        {canCancel(task.status) && !cancelledIds.has(task.id) && (
+                          <button
+                            onClick={() => handleCancel(task.id)}
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[var(--destructive)] text-[var(--destructive)] text-xs font-semibold hover:bg-red-50 transition-colors"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            Cancel
+                          </button>
+                        )}
+
+                        {/* View Bids */}
+                        {task.status === "bid_received" && (
+                          <Link
+                            href={`/task/${task.id}`}
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[var(--accent)] text-white text-xs font-semibold hover:opacity-90 transition-opacity"
+                          >
+                            <Users className="w-3.5 h-3.5" />
+                            Bids Dekho
+                          </Link>
+                        )}
+
+                        {/* View Details */}
+                        <Link
+                          href={`/task/${task.id}`}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[var(--primary)] text-white text-xs font-semibold hover:bg-[var(--primary-hover)] transition-colors"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          Dekho
+                          <ChevronRight className="w-3 h-3" />
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dispute / Completion banner */}
+                  {task.status === "disputed" && (
+                    <div className="px-4 py-2 bg-red-50 border-t border-red-100 flex items-center gap-2">
+                      <AlertCircle className="w-3.5 h-3.5 text-[var(--destructive)] flex-shrink-0" />
+                      <span className="text-xs text-[var(--destructive)] font-medium">
+                        Yeh kaam dispute mein hai. Support se rabta karo.
+                      </span>
+                      <Link href="/dispute" className="ml-auto text-xs font-semibold text-[var(--destructive)] underline whitespace-nowrap">
+                        Dispute Dekho
+                      </Link>
+                    </div>
+                  )}
+                  {task.status === "completion_requested" && (
+                    <div className="px-4 py-2 bg-purple-50 border-t border-purple-100 flex items-center gap-2">
+                      <Star className="w-3.5 h-3.5 text-purple-600 flex-shrink-0" />
+                      <span className="text-xs text-purple-700 font-medium">
+                        Tasker ne kaam mukammal karne ki darkhwast di hai.
+                      </span>
+                      <Link href={`/task/${task.id}`} className="ml-auto text-xs font-semibold text-purple-700 underline whitespace-nowrap">
+                        Confirm Karo
+                      </Link>
+                    </div>
+                  )}
                 </motion.div>
               ))}
             </motion.div>
           )}
-        </Reveal>
+        </AnimatePresence>
 
-        {/* ── Bottom CTA ── */}
+        {/* ── Quick links ── */}
         {filteredTasks.length > 0 && (
-          <Reveal delay={0.12}>
-            <div className="mt-10 rounded-2xl border border-dashed border-[hsl(var(--border))] bg-[hsl(var(--card))]/50 p-8 text-center">
-              <Star
-                className="mx-auto h-8 w-8 text-[var(--accent)] mb-3"
-                aria-hidden="true"
-              />
-              <h3 className="text-base font-semibold text-[hsl(var(--foreground))]">
-                {t("myTasks.cta.heading")}
-              </h3>
-              <p className="mt-1.5 text-sm text-[hsl(var(--muted-foreground))] max-w-sm mx-auto">
-                {t("myTasks.cta.body")}
-              </p>
-              <Link
-                href="/post-task"
-                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-black hover:opacity-90 transition-opacity"
-              >
-                <Plus className="h-4 w-4" aria-hidden="true" />
-                {t("myTasks.cta.button")}
+          <Reveal className="mt-8">
+            <div className="bg-[var(--card)] rounded-xl border border-[var(--border)] p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[var(--primary)]/10 flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 text-[var(--primary)]" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-[var(--foreground)]">Aur kaam chahiye?</p>
+                  <p className="text-xs text-[var(--muted-foreground)]">Naya task post karo aur qareeb ke taskers se bids hasil karo.</p>
+                </div>
+              </div>
+              <Link href="/post-task" className="btn-primary text-sm flex-shrink-0">
+                <Plus className="w-4 h-4" />
+                Post Karo
               </Link>
             </div>
           </Reveal>
         )}
       </div>
-    </main>
+
+      {/* ── Cancel Confirmation Modal ── */}
+      <AnimatePresence>
+        {cancellingId && (
+          <motion.div
+            key="cancel-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+            onClick={dismissCancel}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 40, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.97 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="bg-[var(--card)] rounded-2xl border border-[var(--border)] shadow-2xl w-full max-w-sm p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+                  <AlertCircle className="w-5 h-5 text-[var(--destructive)]" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-[var(--foreground)] text-base">Kaam Cancel Karo?</h3>
+                  <p className="text-xs text-[var(--muted-foreground)]" dir="rtl" lang="ur">کام منسوخ کریں؟</p>
+                </div>
+              </div>
+              <p className="text-sm text-[var(--muted-foreground)] mb-5 leading-relaxed">
+                Kya aap waqai yeh kaam cancel karna chahte hain? Yeh action wapis nahi ho sakta.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={dismissCancel}
+                  className="flex-1 btn-secondary text-sm py-2"
+                >
+                  Nahi, Wapis Jao
+                </button>
+                <button
+                  onClick={() => confirmCancel(cancellingId)}
+                  className="flex-1 px-4 py-2 rounded-[var(--radius)] bg-[var(--destructive)] text-white font-semibold text-sm hover:opacity-90 transition-opacity"
+                >
+                  Haan, Cancel Karo
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

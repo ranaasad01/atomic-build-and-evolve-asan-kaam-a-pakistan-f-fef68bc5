@@ -1,34 +1,54 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { Search, MapPin, Clock, Filter, ChevronDown, Star, Zap, ArrowRight, SlidersHorizontal, X, CheckCircle, AlertCircle, Sparkles, ShoppingBag, Truck, Wrench, Monitor, Home, Circle } from 'lucide-react';
+import { Search, MapPin, Clock, Zap, ArrowRight, X, ShoppingBag, Truck, Sparkles, Wrench, Monitor, Home, Circle, Users, SlidersHorizontal, ChevronDown } from 'lucide-react';
 import { Reveal } from "@/components/Reveal";
-import { staggerContainer, fadeInUp, scaleIn } from "@/lib/motion";
-import { TASK_CATEGORIES, getStatusLabel, getStatusColor, TaskCategory, VerificationStatus } from "@/lib/data";
-type CITIES = any;
-const CITIES: any = [];
-type formatPkr = any;
-const formatPkr: any = [];
-type getVerificationColor = any;
-const getVerificationColor: any = [];
-type Task = any;
-const Task: any = [];
-type TimingWindow = any;
-const TimingWindow: any = [];
+import { staggerContainer, fadeInUp } from "@/lib/motion";
+import {
+  TASK_CATEGORIES,
+  getStatusLabel,
+  getStatusColor,
+  type TaskCategory,
+  type VerificationStatus,
+  formatPKR,
+} from "@/lib/data";
 import { cn } from "@/lib/utils";
 
-// ─── Inline mock data ────────────────────────────────────────────────────────
+type TimingWindow = "morning" | "afternoon" | "evening" | "flexible" | "asap";
+
+interface Task {
+  id: string;
+  title: string;
+  category: string;
+  description: string;
+  city: string;
+  area: string;
+  budgetPkr: number;
+  timing: TimingWindow;
+  preferredDate?: string;
+  status: string;
+  bidCount: number;
+  isUrgent: boolean;
+  posterId: string;
+  createdAt: string;
+  assignedTaskerId?: string;
+}
+
+const CITIES: { slug: string; name: string; isLive: boolean }[] = [
+  { slug: "karachi", name: "Karachi", isLive: true },
+  { slug: "lahore", name: "Lahore", isLive: true },
+  { slug: "islamabad", name: "Islamabad", isLive: true },
+  { slug: "rawalpindi", name: "Rawalpindi", isLive: true },
+];
 
 const MOCK_TASKS: Task[] = [
   {
     id: "t1",
     title: "Grocery run from Imtiaz Karachi",
     category: "errands",
-    description:
-      "Need someone to pick up a list of 15–20 grocery items from Imtiaz Super Store, Gulshan-e-Iqbal. List will be shared on WhatsApp. Please bring your own bag.",
+    description: "Need someone to pick up a list of 15–20 grocery items from Imtiaz Super Store, Gulshan-e-Iqbal.",
     city: "karachi",
     area: "Gulshan-e-Iqbal",
     budgetPkr: 600,
@@ -44,8 +64,7 @@ const MOCK_TASKS: Task[] = [
     id: "t2",
     title: "Move sofa + 2 beds to new flat in DHA",
     category: "moving_delivery",
-    description:
-      "Shifting from a 2nd-floor apartment in DHA Phase 5 to a ground-floor flat in Phase 6. Need 2–3 strong helpers and a pickup truck if possible.",
+    description: "Shifting from a 2nd-floor apartment in DHA Phase 5 to a ground-floor flat in Phase 6.",
     city: "lahore",
     area: "DHA Phase 5",
     budgetPkr: 4500,
@@ -60,8 +79,7 @@ const MOCK_TASKS: Task[] = [
     id: "t3",
     title: "Deep clean 3-bedroom apartment before handover",
     category: "cleaning",
-    description:
-      "Full deep clean required — kitchen, bathrooms, all rooms, windows. Apartment is 1,400 sq ft. Cleaning supplies can be provided or tasker can bring their own.",
+    description: "Full deep clean required — kitchen, bathrooms, all rooms, windows. Apartment is 1,400 sq ft.",
     city: "islamabad",
     area: "F-10 Markaz",
     budgetPkr: 3200,
@@ -77,8 +95,7 @@ const MOCK_TASKS: Task[] = [
     id: "t4",
     title: "Fix leaking kitchen tap and replace bathroom flush",
     category: "small_repairs",
-    description:
-      "Kitchen tap has been dripping for a week. Bathroom flush handle is broken. Need a plumber who can handle both in one visit. Parts cost separate.",
+    description: "Kitchen tap has been dripping for a week. Bathroom flush handle is broken.",
     city: "rawalpindi",
     area: "Satellite Town",
     budgetPkr: 1200,
@@ -93,813 +110,835 @@ const MOCK_TASKS: Task[] = [
     id: "t5",
     title: "Stand in NADRA queue for CNIC renewal",
     category: "queue_standing",
-    description:
-      "Need someone to hold my place in the NADRA queue at the Saddar office from 7 AM. I will arrive by 9 AM. You must be there by 6:45 AM.",
-    city: "karachi",
-    area: "Saddar",
-    budgetPkr: 500,
+    description: "Need someone to hold my place in the NADRA queue from 8 AM. Token collection only.",
+    city: "islamabad",
+    area: "F-8 NADRA Office",
+    budgetPkr: 800,
     timing: "morning",
-    preferredDate: "2025-02-11",
     status: "open",
-    bidCount: 4,
-    isUrgent: true,
+    bidCount: 1,
+    isUrgent: false,
     posterId: "u5",
     createdAt: "2025-02-08T07:30:00Z",
   },
   {
     id: "t6",
-    title: "Set up new laptop and install required software",
+    title: "Laptop slow — needs cleanup and antivirus install",
     category: "digital_help",
-    description:
-      "New Dell laptop needs Windows setup, MS Office, Adobe Reader, Chrome, and a few other tools. Also need help migrating files from old laptop via USB.",
-    city: "lahore",
-    area: "Johar Town",
-    budgetPkr: 1500,
-    timing: "evening",
-    status: "assigned",
-    bidCount: 6,
+    description: "My laptop has become very slow. Need someone to clean it up and install a good antivirus.",
+    city: "rawalpindi",
+    area: "Saddar",
+    budgetPkr: 1200,
+    timing: "flexible",
+    status: "open",
+    bidCount: 0,
     isUrgent: false,
     posterId: "u6",
-    assignedTaskerId: "tk1",
-    createdAt: "2025-02-07T16:00:00Z",
-  },
-  {
-    id: "t7",
-    title: "Cook lunch for family of 6 — desi menu",
-    category: "household_assistance",
-    description:
-      "Need a home cook to prepare daal, sabzi, chicken karahi, and raita for 6 people. Ingredients will be provided. Must be experienced with desi cooking.",
-    city: "islamabad",
-    area: "G-9",
-    budgetPkr: 2000,
-    timing: "morning",
-    preferredDate: "2025-02-09",
-    status: "open",
-    bidCount: 8,
-    isUrgent: false,
-    posterId: "u7",
-    createdAt: "2025-02-08T06:45:00Z",
-  },
-  {
-    id: "t8",
-    title: "Deliver documents to SECP office Islamabad",
-    category: "errands",
-    description:
-      "Need someone to physically deliver a sealed envelope to the SECP office in G-8 and get a receipt stamp. Must be done before 3 PM today.",
-    city: "islamabad",
-    area: "G-8",
-    budgetPkr: 800,
-    timing: "asap",
-    status: "open",
-    bidCount: 1,
-    isUrgent: true,
-    posterId: "u8",
     createdAt: "2025-02-08T11:00:00Z",
   },
   {
-    id: "t9",
-    title: "Paint one room — walls and ceiling",
-    category: "small_repairs",
-    description:
-      "12x14 ft bedroom needs two coats of white paint on walls and ceiling. Paint and rollers will be provided. Need someone with experience — no drips.",
-    city: "karachi",
-    area: "North Nazimabad",
-    budgetPkr: 3500,
-    timing: "flexible",
-    status: "open",
+    id: "t7",
+    title: "Deep kitchen cleaning — 3-bedroom flat",
+    category: "cleaning",
+    description: "Full kitchen deep clean including stove, cabinets, and tiles.",
+    city: "lahore",
+    area: "Gulberg III",
+    budgetPkr: 2800,
+    timing: "morning",
+    status: "bid_received",
     bidCount: 3,
     isUrgent: false,
+    posterId: "u7",
+    createdAt: "2025-02-07T09:00:00Z",
+  },
+  {
+    id: "t8",
+    title: "Plumber needed — bathroom tap leaking badly",
+    category: "small_repairs",
+    description: "Bathroom tap is leaking and needs urgent repair. Parts cost separate.",
+    city: "karachi",
+    area: "North Nazimabad",
+    budgetPkr: 1500,
+    timing: "asap",
+    status: "open",
+    bidCount: 6,
+    isUrgent: true,
+    posterId: "u8",
+    createdAt: "2025-02-08T06:00:00Z",
+  },
+  {
+    id: "t9",
+    title: "Parcel delivery — Blue Area to G-9",
+    category: "moving_delivery",
+    description: "Small parcel needs to be delivered from Blue Area office to G-9 residential address.",
+    city: "islamabad",
+    area: "Blue Area",
+    budgetPkr: 500,
+    timing: "asap",
+    status: "assigned",
+    bidCount: 4,
+    isUrgent: true,
     posterId: "u9",
-    createdAt: "2025-02-07T12:00:00Z",
+    createdAt: "2025-02-08T08:45:00Z",
+  },
+  {
+    id: "t10",
+    title: "AC servicing and gas refill — split unit",
+    category: "small_repairs",
+    description: "1.5 ton split AC needs full service and gas refill before summer.",
+    city: "karachi",
+    area: "DHA Phase 5",
+    budgetPkr: 3500,
+    timing: "afternoon",
+    status: "open",
+    bidCount: 4,
+    isUrgent: true,
+    posterId: "u10",
+    createdAt: "2025-02-08T07:00:00Z",
+  },
+  {
+    id: "t11",
+    title: "Household helper needed for weekly chores",
+    category: "household_assistance",
+    description: "Need a reliable helper for weekly household chores — sweeping, mopping, dishes.",
+    city: "lahore",
+    area: "Model Town",
+    budgetPkr: 1800,
+    timing: "morning",
+    status: "open",
+    bidCount: 2,
+    isUrgent: false,
+    posterId: "u11",
+    createdAt: "2025-02-07T16:00:00Z",
+  },
+  {
+    id: "t12",
+    title: "Set up new router and configure WiFi",
+    category: "digital_help",
+    description: "New TP-Link router needs setup. Need someone who knows networking.",
+    city: "karachi",
+    area: "Clifton",
+    budgetPkr: 900,
+    timing: "evening",
+    status: "open",
+    bidCount: 1,
+    isUrgent: false,
+    posterId: "u12",
+    createdAt: "2025-02-08T12:00:00Z",
   },
 ];
 
-const TIMING_LABELS: Record<TimingWindow, string> = {
+const CATEGORY_META: Record<string, { label: string; icon: React.ElementType; color: string; bg: string }> = {
+  errands:             { label: "Errands",       icon: ShoppingBag, color: "text-orange-600",  bg: "bg-orange-50" },
+  moving_delivery:     { label: "Moving",        icon: Truck,       color: "text-blue-600",   bg: "bg-blue-50" },
+  cleaning:            { label: "Cleaning",      icon: Sparkles,    color: "text-teal-600",   bg: "bg-teal-50" },
+  small_repairs:       { label: "Repairs",       icon: Wrench,      color: "text-red-600",    bg: "bg-red-50" },
+  queue_standing:      { label: "Queue",         icon: Users,       color: "text-purple-600", bg: "bg-purple-50" },
+  digital_help:        { label: "Digital",       icon: Monitor,     color: "text-indigo-600", bg: "bg-indigo-50" },
+  household_assistance:{ label: "Household",     icon: Home,        color: "text-green-600",  bg: "bg-green-50" },
+  other:               { label: "Other",         icon: Circle,      color: "text-gray-600",   bg: "bg-gray-50" },
+};
+
+const TIMING_LABELS: Record<string, string> = {
+  asap: "ASAP",
   morning: "Morning",
   afternoon: "Afternoon",
   evening: "Evening",
   flexible: "Flexible",
-  asap: "ASAP",
 };
 
-const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  errands: <ShoppingBag className="h-4 w-4" />,
-  moving_delivery: <Truck className="h-4 w-4" />,
-  cleaning: <Sparkles className="h-4 w-4" />,
-  small_repairs: <Wrench className="h-4 w-4" />,
-  queue_standing: <Clock className="h-4 w-4" />,
-  digital_help: <Monitor className="h-4 w-4" />,
-  household_assistance: <Home className="h-4 w-4" />,
-  other: <Circle className="h-4 w-4" />,
-};
-
-const VERIFICATION_BADGE: Record<VerificationStatus, { label: string; color: string }> = {
-  unverified: { label: "Unverified", color: "text-gray-400" },
-  submitted: { label: "Pending", color: "text-yellow-500" },
-  verified: { label: "Verified", color: "text-emerald-500" },
-  restricted: { label: "Restricted", color: "text-red-500" },
-};
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function StatusPill({ status }: { status: Task["status"] }) {
-  const label = getStatusLabel(status);
-  const color = getStatusColor(status);
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium",
-        color
-      )}
-    >
-      {label}
-    </span>
-  );
-}
-
-function UrgentBadge() {
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-[var(--brand-accent)]/10 px-2.5 py-0.5 text-xs font-semibold text-[var(--brand-accent)]">
-      <Zap className="h-3 w-3" aria-hidden="true" />
-      Urgent
-    </span>
-  );
-}
-
-function TaskCard({ task, index }: { task: Task; index: number }) {
-  const categoryMeta = TASK_CATEGORIES.find((c) => c.key === task.category);
-  const cityMeta = CITIES.find((c) => c.slug === task.city);
-
-  return (
-    <Reveal delay={index * 0.06}>
-      <Link href={`/task/${task.id}`} className="group block h-full">
-        <motion.article
-          whileHover={{ y: -3, boxShadow: "0 8px 32px -8px rgba(0,0,0,0.18)" }}
-          transition={{ duration: 0.22, ease: "easeOut" }}
-          className="relative flex h-full flex-col rounded-2xl border border-white/10 bg-[var(--card)] p-5 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_4px_16px_-4px_rgba(0,0,0,0.12)] transition-all duration-300"
-        >
-          {/* Top row */}
-          <div className="mb-3 flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--brand-primary)]/10 text-[var(--brand-primary)]">
-                {CATEGORY_ICONS[task.category] ?? <Circle className="h-4 w-4" />}
-              </span>
-              <span className="text-xs font-medium text-[var(--muted-foreground)]">
-                {categoryMeta?.label ?? task.category}
-              </span>
-            </div>
-            <div className="flex shrink-0 items-center gap-1.5">
-              {task.isUrgent && <UrgentBadge />}
-              <StatusPill status={task.status} />
-            </div>
-          </div>
-
-          {/* Title */}
-          <h3 className="mb-2 text-base font-semibold leading-snug text-[var(--foreground)] group-hover:text-[var(--brand-primary)] transition-colors duration-200 line-clamp-2">
-            {task.title}
-          </h3>
-
-          {/* Description */}
-          <p className="mb-4 line-clamp-2 text-sm leading-relaxed text-[var(--muted-foreground)]">
-            {task.description}
-          </p>
-
-          {/* Meta row */}
-          <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-[var(--muted-foreground)]">
-            <span className="flex items-center gap-1">
-              <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              {task.area}, {cityMeta?.name ?? task.city}
-            </span>
-            <span className="flex items-center gap-1">
-              <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              {TIMING_LABELS[task.timing]}
-            </span>
-            <span className="flex items-center gap-1">
-              <Star className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" aria-hidden="true" />
-              {task.bidCount} bid{task.bidCount !== 1 ? "s" : ""}
-            </span>
-          </div>
-
-          {/* Footer */}
-          <div className="mt-4 flex items-center justify-between border-t border-white/8 pt-3">
-            <span className="text-lg font-bold text-[var(--foreground)]">
-              {formatPkr(task.budgetPkr)}
-            </span>
-            <span className="flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-              View task <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-            </span>
-          </div>
-        </motion.article>
-      </Link>
-    </Reveal>
-  );
-}
-
-// ─── Filter Panel ─────────────────────────────────────────────────────────────
-
-interface Filters {
-  city: string;
-  category: string;
-  timing: string;
-  minBudget: string;
-  maxBudget: string;
-  urgentOnly: boolean;
-  status: string;
-}
-
-const DEFAULT_FILTERS: Filters = {
-  city: "",
-  category: "",
-  timing: "",
-  minBudget: "",
-  maxBudget: "",
-  urgentOnly: false,
-  status: "",
-};
-
-function FilterPanel({
-  filters,
-  onChange,
-  onReset,
-  onClose,
-}: {
-  filters: Filters;
-  onChange: (f: Filters) => void;
-  onReset: () => void;
-  onClose: () => void;
-}) {
-  const liveCities = CITIES.filter((c) => c.isLive);
-
-  return (
-    <motion.aside
-      initial={{ opacity: 0, x: 24 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 24 }}
-      transition={{ duration: 0.28, ease: "easeOut" }}
-      className="sticky top-24 rounded-2xl border border-white/10 bg-[var(--card)] p-5 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_8px_24px_-8px_rgba(0,0,0,0.14)]"
-    >
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-[var(--foreground)]">Filters</h2>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onReset}
-            className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
-          >
-            Reset
-          </button>
-          <button
-            onClick={onClose}
-            aria-label="Close filters"
-            className="rounded-lg p-1 text-[var(--muted-foreground)] hover:bg-white/8 hover:text-[var(--foreground)] transition-colors lg:hidden"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
-      <div className="space-y-5">
-        {/* City */}
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-[var(--muted-foreground)]">
-            City
-          </label>
-          <div className="relative">
-            <select
-              value={filters.city}
-              onChange={(e) => onChange({ ...filters, city: e.target.value })}
-              className="w-full appearance-none rounded-xl border border-white/10 bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]/40"
-            >
-              <option value="">All cities</option>
-              {liveCities.map((c) => (
-                <option key={c.slug} value={c.slug}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
-          </div>
-        </div>
-
-        {/* Category */}
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-[var(--muted-foreground)]">
-            Category
-          </label>
-          <div className="relative">
-            <select
-              value={filters.category}
-              onChange={(e) => onChange({ ...filters, category: e.target.value })}
-              className="w-full appearance-none rounded-xl border border-white/10 bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]/40"
-            >
-              <option value="">All categories</option>
-              {TASK_CATEGORIES.map((cat) => (
-                <option key={cat.key} value={cat.key}>
-                  {cat.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
-          </div>
-        </div>
-
-        {/* Timing */}
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-[var(--muted-foreground)]">
-            Timing
-          </label>
-          <div className="relative">
-            <select
-              value={filters.timing}
-              onChange={(e) => onChange({ ...filters, timing: e.target.value })}
-              className="w-full appearance-none rounded-xl border border-white/10 bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]/40"
-            >
-              <option value="">Any time</option>
-              {Object.entries(TIMING_LABELS).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
-          </div>
-        </div>
-
-        {/* Status */}
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-[var(--muted-foreground)]">
-            Status
-          </label>
-          <div className="relative">
-            <select
-              value={filters.status}
-              onChange={(e) => onChange({ ...filters, status: e.target.value })}
-              className="w-full appearance-none rounded-xl border border-white/10 bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]/40"
-            >
-              <option value="">All statuses</option>
-              <option value="open">Open</option>
-              <option value="bid_received">Bid Received</option>
-              <option value="assigned">Assigned</option>
-              <option value="in_progress">In Progress</option>
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
-          </div>
-        </div>
-
-        {/* Budget range */}
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-[var(--muted-foreground)]">
-            Budget (PKR)
-          </label>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              placeholder="Min"
-              value={filters.minBudget}
-              onChange={(e) => onChange({ ...filters, minBudget: e.target.value })}
-              className="w-full rounded-xl border border-white/10 bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]/40"
-            />
-            <span className="text-xs text-[var(--muted-foreground)]">–</span>
-            <input
-              type="number"
-              placeholder="Max"
-              value={filters.maxBudget}
-              onChange={(e) => onChange({ ...filters, maxBudget: e.target.value })}
-              className="w-full rounded-xl border border-white/10 bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]/40"
-            />
-          </div>
-        </div>
-
-        {/* Urgent only */}
-        <label className="flex cursor-pointer items-center gap-3">
-          <div
-            role="checkbox"
-            aria-checked={filters.urgentOnly}
-            tabIndex={0}
-            onClick={() => onChange({ ...filters, urgentOnly: !filters.urgentOnly })}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onChange({ ...filters, urgentOnly: !filters.urgentOnly });
-              }
-            }}
-            className={cn(
-              "relative h-5 w-9 rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]/60",
-              filters.urgentOnly ? "bg-[var(--brand-accent)]" : "bg-white/15"
-            )}
-          >
-            <span
-              className={cn(
-                "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200",
-                filters.urgentOnly ? "translate-x-4" : "translate-x-0.5"
-              )}
-            />
-          </div>
-          <span className="text-sm text-[var(--foreground)]">Urgent tasks only</span>
-        </label>
-      </div>
-    </motion.aside>
-  );
-}
-
-// ─── Hero Banner ──────────────────────────────────────────────────────────────
-
-function HeroBanner({ totalOpen }: { totalOpen: number }) {
-  return (
-    <Reveal>
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[var(--brand-primary)] via-[var(--brand-primary-dark)] to-[var(--brand-primary-darker)] px-6 py-10 md:px-12 md:py-14">
-        {/* Decorative blobs */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/5 blur-3xl"
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -bottom-12 left-1/3 h-48 w-48 rounded-full bg-[var(--brand-accent)]/20 blur-2xl"
-        />
-
-        <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/90">
-              <CheckCircle className="h-3.5 w-3.5" aria-hidden="true" />
-              {totalOpen} open tasks right now
-            </div>
-            <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-white md:text-4xl">
-              Find tasks near you.
-              <br />
-              <span className="text-[var(--brand-accent)]">Earn on your schedule.</span>
-            </h1>
-            <p className="mt-3 max-w-md text-sm leading-relaxed text-white/75">
-              Browse verified tasks posted by locals across Karachi, Lahore, Islamabad and Rawalpindi. Bid, get hired, and get paid.
-            </p>
-          </div>
-          <div className="flex shrink-0 flex-col gap-3 sm:flex-row md:flex-col lg:flex-row">
-            <Link
-              href="/post-task"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--brand-accent)] px-5 py-3 text-sm font-semibold text-[var(--brand-accent-fg)] shadow-lg transition-all duration-200 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-            >
-              Post a Task
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </Link>
-            <Link
-              href="/verification-status"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/10 px-5 py-3 text-sm font-semibold text-white backdrop-blur-sm transition-all duration-200 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-            >
-              Become a Tasker
-            </Link>
-          </div>
-        </div>
-      </section>
-    </Reveal>
-  );
-}
-
-// ─── Category Quick-Filter Strip ──────────────────────────────────────────────
-
-function CategoryStrip({
-  active,
-  onSelect,
-}: {
-  active: string;
-  onSelect: (key: string) => void;
-}) {
-  const all = [{ key: "", label: "All Tasks", icon: "all" }, ...TASK_CATEGORIES];
-
-  return (
-    <Reveal>
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-        {all.map((cat) => (
-          <motion.button
-            key={cat.key}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => onSelect(cat.key)}
-            className={cn(
-              "flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-xs font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]/50",
-              active === cat.key
-                ? "border-[var(--brand-primary)] bg-[var(--brand-primary)] text-white"
-                : "border-white/10 bg-[var(--card)] text-[var(--muted-foreground)] hover:border-[var(--brand-primary)]/40 hover:text-[var(--foreground)]"
-            )}
-          >
-            {cat.key !== "" && (
-              <span aria-hidden="true">
-                {CATEGORY_ICONS[cat.key] ?? <Circle className="h-3.5 w-3.5" />}
-              </span>
-            )}
-            {cat.label}
-          </motion.button>
-        ))}
-      </div>
-    </Reveal>
-  );
-}
-
-// ─── Stats Bar ────────────────────────────────────────────────────────────────
-
-const STATS = [
-  { value: "2,400+", label: "Tasks completed" },
-  { value: "840+", label: "Active taskers" },
-  { value: "4.8★", label: "Avg. tasker rating" },
-  { value: "4 cities", label: "Live now" },
+const STATUS_FILTER_OPTIONS = [
+  { value: "all", label: "All Status" },
+  { value: "open", label: "Open" },
+  { value: "bid_received", label: "Bid Received" },
+  { value: "assigned", label: "Assigned" },
 ];
 
-function StatsBar() {
+const PAGE_SIZE = 6;
+
+// ─── Task Card ────────────────────────────────────────────────────────────────
+
+function TaskCard({ task }: { task: Task }) {
+  const meta = CATEGORY_META[task.category] ?? CATEGORY_META["other"];
+  const Icon = meta.icon;
+  const statusLabel = getStatusLabel(task.status as Parameters<typeof getStatusLabel>[0]);
+  const statusColor = getStatusColor(task.status as Parameters<typeof getStatusColor>[0]);
+  const cityName = CITIES.find((c) => c.slug === task.city)?.name ?? task.city;
+
   return (
-    <Reveal>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {STATS.map((s) => (
-          <div
-            key={s.label}
-            className="rounded-2xl border border-white/8 bg-[var(--card)] px-4 py-4 text-center shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
-          >
-            <p className="text-xl font-extrabold text-[var(--foreground)]">{s.value}</p>
-            <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">{s.label}</p>
+    <motion.div
+      variants={fadeInUp}
+      className={cn(
+        "bg-white rounded-2xl overflow-hidden",
+        "border border-[var(--border)]",
+        "shadow-[0_2px_8px_rgba(26,26,46,0.06),0_0_0_0_transparent]",
+        "hover:shadow-[0_8px_24px_rgba(27,108,168,0.12)] hover:-translate-y-0.5",
+        "transition-all duration-300 flex flex-col",
+        "border-l-4",
+        task.isUrgent ? "border-l-[var(--accent)]" : "border-l-[var(--primary)]"
+      )}
+    >
+      {/* Card header */}
+      <div className="p-4 pb-3 flex items-start gap-3">
+        {/* Category icon */}
+        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0", meta.bg)}>
+          <Icon className={cn("w-5 h-5", meta.color)} aria-hidden="true" />
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <h3 className="font-bold text-[var(--foreground)] text-sm leading-snug line-clamp-2 flex-1">
+              {task.title}
+            </h3>
+            {task.isUrgent && (
+              <span className="flex-shrink-0 inline-flex items-center gap-0.5 bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide">
+                <Zap className="w-2.5 h-2.5" aria-hidden="true" />
+                Urgent
+              </span>
+            )}
           </div>
-        ))}
+
+          {/* Location */}
+          <div className="flex items-center gap-1 text-[var(--muted-foreground)] text-xs">
+            <MapPin className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
+            <span className="truncate">{task.area}, {cityName}</span>
+          </div>
+        </div>
       </div>
-    </Reveal>
-  );
-}
 
-// ─── Empty State ──────────────────────────────────────────────────────────────
+      {/* Divider */}
+      <div className="mx-4 border-t border-[var(--border)]" />
 
-function EmptyState({ onReset }: { onReset: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-[var(--card)] py-16 text-center">
-      <AlertCircle className="mb-4 h-10 w-10 text-[var(--muted-foreground)]" aria-hidden="true" />
-      <p className="text-base font-semibold text-[var(--foreground)]">No tasks match your filters</p>
-      <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-        Try adjusting your search or clearing filters.
-      </p>
-      <button
-        onClick={onReset}
-        className="mt-5 rounded-xl bg-[var(--brand-primary)] px-5 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]/50"
-      >
-        Clear all filters
-      </button>
-    </div>
+      {/* Card body */}
+      <div className="p-4 pt-3 flex-1 flex flex-col gap-3">
+        {/* Budget + bids row */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide font-medium mb-0.5">Budget</p>
+            <p className="text-lg font-bold text-[var(--accent)] leading-none">
+              {formatPKR(task.budgetPkr)}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide font-medium mb-0.5">Bids</p>
+            <span className={cn(
+              "inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full",
+              task.bidCount > 0
+                ? "bg-[var(--primary)] text-white"
+                : "bg-[var(--foreground)]/20 text-[var(--foreground)]"
+            )}>
+              <Users className="w-3 h-3" aria-hidden="true" />
+              {task.bidCount} {task.bidCount === 1 ? "bid" : "bids"}
+            </span>
+          </div>
+        </div>
+
+        {/* Timing + status row */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="inline-flex items-center gap-1 bg-[var(--background)] text-[var(--muted-foreground)] text-xs px-2 py-1 rounded-lg border border-[var(--border)]">
+            <Clock className="w-3 h-3" aria-hidden="true" />
+            {TIMING_LABELS[task.timing] ?? task.timing}
+          </span>
+          <span className={cn("text-xs font-semibold px-2 py-1 rounded-lg", statusColor)}>
+            {statusLabel}
+          </span>
+          <span className={cn(
+            "text-xs px-2 py-1 rounded-lg border font-medium",
+            meta.bg, meta.color, "border-current/20"
+          )}>
+            {meta.label}
+          </span>
+        </div>
+
+        {/* CTA */}
+        <Link
+          href={`/task/${task.id}`}
+          className={cn(
+            "mt-auto flex items-center justify-center gap-1.5",
+            "bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white",
+            "text-sm font-semibold py-2.5 px-4 rounded-xl",
+            "transition-all duration-200 group"
+          )}
+        >
+          View Task
+          <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
+        </Link>
+      </div>
+    </motion.div>
   );
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function HomeTaskFeedPage() {
-  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
-  const [search, setSearch] = useState("");
+  const [selectedCity, setSelectedCity] = useState<string>("all");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [urgentOnly, setUrgentOnly] = useState(false);
+  const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
-  const [sortBy, setSortBy] = useState<"newest" | "budget_high" | "budget_low" | "bids">("newest");
 
-  const openCount = MOCK_TASKS.filter((t) => t.status === "open" || t.status === "bid_received").length;
+  const activeCityName = CITIES.find((c) => c.slug === selectedCity)?.name;
 
-  const filtered = useCallback(() => {
-    let tasks = [...MOCK_TASKS];
-
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      tasks = tasks.filter(
-        (t) =>
-          t.title.toLowerCase().includes(q) ||
-          t.description.toLowerCase().includes(q) ||
-          t.area.toLowerCase().includes(q)
-      );
+  const filtered = MOCK_TASKS.filter((task) => {
+    if (selectedCity !== "all" && task.city !== selectedCity) return false;
+    if (selectedCategory !== "all" && task.category !== selectedCategory) return false;
+    if (selectedStatus !== "all" && task.status !== selectedStatus) return false;
+    if (urgentOnly && !task.isUrgent) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      if (
+        !task.title.toLowerCase().includes(q) &&
+        !task.area.toLowerCase().includes(q) &&
+        !task.description.toLowerCase().includes(q)
+      )
+        return false;
     }
-    if (filters.city) tasks = tasks.filter((t) => t.city === filters.city);
-    if (filters.category) tasks = tasks.filter((t) => t.category === filters.category);
-    if (filters.timing) tasks = tasks.filter((t) => t.timing === filters.timing);
-    if (filters.status) tasks = tasks.filter((t) => t.status === filters.status);
-    if (filters.urgentOnly) tasks = tasks.filter((t) => t.isUrgent);
-    if (filters.minBudget) tasks = tasks.filter((t) => t.budgetPkr >= Number(filters.minBudget));
-    if (filters.maxBudget) tasks = tasks.filter((t) => t.budgetPkr <= Number(filters.maxBudget));
+    return true;
+  });
 
-    switch (sortBy) {
-      case "budget_high":
-        tasks.sort((a, b) => b.budgetPkr - a.budgetPkr);
-        break;
-      case "budget_low":
-        tasks.sort((a, b) => a.budgetPkr - b.budgetPkr);
-        break;
-      case "bids":
-        tasks.sort((a, b) => b.bidCount - a.bidCount);
-        break;
-      default:
-        tasks.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    }
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-    return tasks;
-  }, [filters, search, sortBy]);
+  const handleCityChange = useCallback((slug: string) => {
+    setSelectedCity(slug);
+    setPage(1);
+  }, []);
 
-  const results = filtered();
-  const activeFilterCount = [
-    filters.city,
-    filters.category,
-    filters.timing,
-    filters.status,
-    filters.minBudget,
-    filters.maxBudget,
-    filters.urgentOnly ? "urgent" : "",
-  ].filter(Boolean).length;
+  const handleCategoryChange = useCallback((cat: string) => {
+    setSelectedCategory(cat);
+    setPage(1);
+  }, []);
+
+  const handleStatusChange = useCallback((s: string) => {
+    setSelectedStatus(s);
+    setPage(1);
+  }, []);
+
+  const handleSearch = useCallback((q: string) => {
+    setSearchQuery(q);
+    setPage(1);
+  }, []);
+
+  const clearFilters = useCallback(() => {
+    setSelectedCity("all");
+    setSelectedCategory("all");
+    setSelectedStatus("all");
+    setSearchQuery("");
+    setUrgentOnly(false);
+    setPage(1);
+  }, []);
+
+  const hasActiveFilters =
+    selectedCity !== "all" ||
+    selectedCategory !== "all" ||
+    selectedStatus !== "all" ||
+    urgentOnly ||
+    searchQuery.trim() !== "";
 
   return (
     <main className="min-h-screen bg-[var(--background)]">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Hero */}
-        <div className="mb-8">
-          <HeroBanner totalOpen={openCount} />
-        </div>
+      {/* ── HERO BANNER ── */}
+      <section className="relative overflow-hidden" style={{background:'linear-gradient(135deg,#0D4F8C 0%,#1B6CA8 55%,#1a5f96 100%)'}}>
+        {/* hero content */}
+        <div className="hidden">PLACEHOLDER_REPLACED</div>
+      </section>
+      <section className="relative overflow-hidden_REMOVEDhiddenhidden bg-gradient-to-br from-[#1B6CA8] via-[#1560a0] to-[#0f3f63]">
+        {/* Decorative pattern */}
+        <div
+          className="absolute inset-0 opacity-[0.06]"
+          style={{
+            backgroundImage:
+              "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
+          }}
+          aria-hidden="true"
+        />
+        {/* Glow orbs */}
+        <div
+          className="absolute top-0 right-0 w-96 h-96 rounded-full opacity-10 blur-3xl"
+          style={{ background: "radial-gradient(circle, #F5A623 0%, transparent 70%)" }}
+          aria-hidden="true"
+        />
 
-        {/* Stats */}
-        <div className="mb-8">
-          <StatsBar />
-        </div>
-
-        {/* Category strip */}
-        <div className="mb-6">
-          <CategoryStrip
-            active={filters.category}
-            onSelect={(key) => setFilters((f) => ({ ...f, category: key }))}
-          />
-        </div>
-
-        {/* Search + sort bar */}
-        <Reveal>
-          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-            {/* Search */}
-            <div className="relative flex-1">
-              <Search
-                className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted-foreground)]"
-                aria-hidden="true"
-              />
-              <input
-                type="search"
-                placeholder="Search tasks by title, area, or keyword..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-[var(--card)] py-2.5 pl-10 pr-4 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]/40"
-              />
-            </div>
-
-            {/* Sort */}
-            <div className="relative shrink-0">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                className="appearance-none rounded-xl border border-white/10 bg-[var(--card)] py-2.5 pl-4 pr-9 text-sm text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]/40"
+        <div className="container relative z-10 py-10 md:py-14">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div>
+              {/* Urdu + English heading */}
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-2xl">🇵🇰</span>
+                <span className="text-white/60 text-sm font-medium tracking-wide uppercase">Asan Kaam</span>
+              </div>
+              <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight mb-1">
+                Kaam Dhundein
+              </h1>
+              <p
+                className="text-white/70 text-lg mb-4"
+                style={{ fontFamily: "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif", direction: "rtl" }}
               >
-                <option value="newest">Newest first</option>
-                <option value="budget_high">Budget: High to Low</option>
-                <option value="budget_low">Budget: Low to High</option>
-                <option value="bids">Most bids</option>
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
-            </div>
+                اپنے شہر میں کام تلاش کریں
+              </p>
 
-            {/* Filter toggle (mobile) */}
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setShowFilters((v) => !v)}
-              className={cn(
-                "relative flex shrink-0 items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]/50 lg:hidden",
-                showFilters
-                  ? "border-[var(--brand-primary)] bg-[var(--brand-primary)] text-white"
-                  : "border-white/10 bg-[var(--card)] text-[var(--foreground)]"
-              )}
-            >
-              <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
-              Filters
-              {activeFilterCount > 0 && (
-                <span className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--brand-accent)] text-[10px] font-bold text-[var(--brand-accent-fg)]">
-                  {activeFilterCount}
+              {/* Active city pill */}
+              {activeCityName && (
+                <span className="inline-flex items-center gap-1.5 bg-[var(--accent)] text-white text-sm font-semibold px-3 py-1 rounded-full">
+                  <MapPin className="w-3.5 h-3.5" aria-hidden="true" />
+                  {activeCityName}
                 </span>
               )}
-            </motion.button>
+            </div>
+
+            {/* Search bar */}
+            <div className="w-full md:max-w-sm">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" aria-hidden="true" />
+                <input
+                  type="text"
+                  placeholder="Search tasks..."
+                  value={searchQuery}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="w-full bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder-white/50 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-white/30 transition-all"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => handleSearch("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors"
+                    aria-label="Clear search"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
-        </Reveal>
 
-        {/* Results count */}
-        <Reveal>
-          <p className="mb-5 text-sm text-[var(--muted-foreground)]">
-            Showing{" "}
-            <span className="font-semibold text-[var(--foreground)]">{results.length}</span>{" "}
-            task{results.length !== 1 ? "s" : ""}
-            {activeFilterCount > 0 && (
-              <>
-                {" "}with{" "}
-                <button
-                  onClick={() => setFilters(DEFAULT_FILTERS)}
-                  className="text-[var(--brand-primary)] underline underline-offset-2 hover:no-underline"
-                >
-                  {activeFilterCount} filter{activeFilterCount !== 1 ? "s" : ""} active
-                </button>
-              </>
+          {/* City chips */}
+          <div className="mt-6 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <button
+              onClick={() => handleCityChange("all")}
+              className={cn(
+                "flex-shrink-0 flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full border transition-all duration-200",
+                selectedCity === "all"
+                  ? "bg-white text-[var(--primary)] border-white"
+                  : "bg-white/10 text-white/80 border-white/20 hover:bg-white/20"
+              )}
+            >
+              🇵🇰 All Cities
+            </button>
+            {CITIES.map((city) => (
+              <button
+                key={city.slug}
+                onClick={() => handleCityChange(city.slug)}
+                className={cn(
+                  "flex-shrink-0 text-sm font-medium px-3 py-1.5 rounded-full border transition-all duration-200",
+                  selectedCity === city.slug
+                    ? "bg-[var(--accent)] text-white border-[var(--accent)]"
+                    : "bg-white/10 text-white/80 border-white/20 hover:bg-white/20"
+                )}
+              >
+                {city.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FILTER BAR ── */}
+      <section className="sticky top-14 md:top-16 z-30 bg-white border-b border-[var(--border)] shadow-sm">
+        <div className="container">
+          {/* Mobile: scrollable chips */}
+          <div className="flex items-center gap-2 py-3 overflow-x-auto scrollbar-hide lg:hidden">
+            <button
+              onClick={() => setShowFilters((v) => !v)}
+              className={cn(
+                "flex-shrink-0 flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-full border transition-all",
+                showFilters
+                  ? "bg-[var(--primary)] text-white border-[var(--primary)]"
+                  : "bg-[var(--background)] text-[var(--foreground)] border-[var(--border)]"
+              )}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" aria-hidden="true" />
+              Filters
+              {hasActiveFilters && (
+                <span className="w-2 h-2 rounded-full bg-[var(--accent)] flex-shrink-0" />
+              )}
+            </button>
+
+            {/* Category chips */}
+            <button
+              onClick={() => handleCategoryChange("all")}
+              className={cn(
+                "flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-all",
+                selectedCategory === "all"
+                  ? "bg-[var(--primary)] text-white border-[var(--primary)]"
+                  : "bg-[var(--background)] text-[var(--muted-foreground)] border-[var(--border)] hover:border-[var(--primary)] hover:text-[var(--primary)]"
+              )}
+            >
+              All Categories
+            </button>
+            {Object.entries(CATEGORY_META).map(([key, meta]) => (
+              <button
+                key={key}
+                onClick={() => handleCategoryChange(key)}
+                className={cn(
+                  "flex-shrink-0 flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full border transition-all",
+                  selectedCategory === key
+                    ? "bg-[var(--primary)] text-white border-[var(--primary)]"
+                    : "bg-[var(--background)] text-[var(--muted-foreground)] border-[var(--border)] hover:border-[var(--primary)] hover:text-[var(--primary)]"
+                )}
+              >
+                {meta.label}
+              </button>
+            ))}
+
+            {/* Urgent toggle */}
+            <button
+              onClick={() => { setUrgentOnly((v) => !v); setPage(1); }}
+              className={cn(
+                "flex-shrink-0 flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full border transition-all",
+                urgentOnly
+                  ? "bg-amber-500 text-white border-amber-500"
+                  : "bg-[var(--background)] text-[var(--muted-foreground)] border-[var(--border)] hover:border-amber-400 hover:text-amber-600"
+              )}
+            >
+              <Zap className="w-3 h-3" aria-hidden="true" />
+              Urgent
+            </button>
+          </div>
+
+          {/* Desktop: inline filter row */}
+          <div className="hidden lg:flex items-center gap-3 py-3">
+            {/* Category */}
+            <div className="relative">
+              <select
+                value={selectedCategory}
+                onChange={(e) => handleCategoryChange(e.target.value)}
+                className="appearance-none bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] text-sm font-medium rounded-xl pl-3 pr-8 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer"
+              >
+                <option value="all">All Categories</option>
+                {Object.entries(CATEGORY_META).map(([key, meta]) => (
+                  <option key={key} value={key}>{meta.label}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted-foreground)] pointer-events-none" aria-hidden="true" />
+            </div>
+
+            {/* Status */}
+            <div className="relative">
+              <select
+                value={selectedStatus}
+                onChange={(e) => handleStatusChange(e.target.value)}
+                className="appearance-none bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] text-sm font-medium rounded-xl pl-3 pr-8 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] cursor-pointer"
+              >
+                {STATUS_FILTER_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted-foreground)] pointer-events-none" aria-hidden="true" />
+            </div>
+
+            {/* Urgent toggle */}
+            <button
+              onClick={() => { setUrgentOnly((v) => !v); setPage(1); }}
+              className={cn(
+                "flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl border transition-all",
+                urgentOnly
+                  ? "bg-amber-500 text-white border-amber-500"
+                  : "bg-[var(--background)] text-[var(--muted-foreground)] border-[var(--border)] hover:border-amber-400 hover:text-amber-600"
+              )}
+            >
+              <Zap className="w-4 h-4" aria-hidden="true" />
+              Urgent Only
+            </button>
+
+            {/* Clear */}
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-1.5 text-sm font-medium text-[var(--destructive)] hover:underline ml-auto"
+              >
+                <X className="w-4 h-4" aria-hidden="true" />
+                Clear filters
+              </button>
             )}
-          </p>
-        </Reveal>
 
-        {/* Main layout: sidebar + grid */}
-        <div className="flex gap-6">
-          {/* Sidebar filter — desktop always visible */}
-          <aside className="hidden w-64 shrink-0 lg:block">
-            <FilterPanel
-              filters={filters}
-              onChange={setFilters}
-              onReset={() => setFilters(DEFAULT_FILTERS)}
-              onClose={() => setShowFilters(false)}
-            />
+            {/* Results count */}
+            <span className="ml-auto text-sm text-[var(--muted-foreground)]">
+              {filtered.length} task{filtered.length !== 1 ? "s" : ""} found
+            </span>
+          </div>
+        </div>
+
+        {/* Mobile expanded filter panel */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="overflow-hidden border-t border-[var(--border)] lg:hidden"
+            >
+              <div className="container py-4 grid grid-cols-2 gap-3">
+                {/* Status */}
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--muted-foreground)] mb-1.5 uppercase tracking-wide">Status</label>
+                  <div className="relative">
+                    <select
+                      value={selectedStatus}
+                      onChange={(e) => handleStatusChange(e.target.value)}
+                      className="w-full appearance-none bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-xl pl-3 pr-8 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                    >
+                      {STATUS_FILTER_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted-foreground)] pointer-events-none" aria-hidden="true" />
+                  </div>
+                </div>
+
+                {/* Category */}
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--muted-foreground)] mb-1.5 uppercase tracking-wide">Category</label>
+                  <div className="relative">
+                    <select
+                      value={selectedCategory}
+                      onChange={(e) => handleCategoryChange(e.target.value)}
+                      className="w-full appearance-none bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-xl pl-3 pr-8 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                    >
+                      <option value="all">All Categories</option>
+                      {Object.entries(CATEGORY_META).map(([key, meta]) => (
+                        <option key={key} value={key}>{meta.label}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted-foreground)] pointer-events-none" aria-hidden="true" />
+                  </div>
+                </div>
+
+                {/* Clear */}
+                {hasActiveFilters && (
+                  <button
+                    onClick={clearFilters}
+                    className="col-span-2 flex items-center justify-center gap-1.5 text-sm font-medium text-[var(--destructive)] border border-[var(--destructive)]/30 rounded-xl py-2 hover:bg-red-50 transition-colors"
+                  >
+                    <X className="w-4 h-4" aria-hidden="true" />
+                    Clear all filters
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </section>
+
+      {/* ── MAIN CONTENT ── */}
+      <div className="container py-8">
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* ── DESKTOP SIDEBAR ── */}
+          <aside className="hidden lg:block w-64 flex-shrink-0">
+            <div className="sticky top-36 space-y-6">
+              {/* City filter */}
+              <div className="bg-white rounded-2xl border border-[var(--border)] p-4 shadow-sm">
+                <h3 className="text-xs font-bold text-[var(--muted-foreground)] uppercase tracking-wider mb-3">
+                  🇵🇰 City
+                </h3>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => handleCityChange("all")}
+                    className={cn(
+                      "w-full text-left text-sm px-3 py-2 rounded-xl font-medium transition-all",
+                      selectedCity === "all"
+                        ? "bg-[var(--primary)] text-white"
+                        : "text-[var(--foreground)] hover:bg-[var(--background)]"
+                    )}
+                  >
+                    All Cities
+                  </button>
+                  {CITIES.map((city) => (
+                    <button
+                      key={city.slug}
+                      onClick={() => handleCityChange(city.slug)}
+                      className={cn(
+                        "w-full text-left text-sm px-3 py-2 rounded-xl font-medium transition-all flex items-center justify-between",
+                        selectedCity === city.slug
+                          ? "bg-[var(--primary)] text-white"
+                          : "text-[var(--foreground)] hover:bg-[var(--background)]"
+                      )}
+                    >
+                      <span>{city.name}</span>
+                      <span className={cn(
+                        "text-xs px-1.5 py-0.5 rounded-full",
+                        selectedCity === city.slug ? "bg-white/20 text-white" : "bg-emerald-50 text-emerald-700"
+                      )}>
+                        Live
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Category filter */}
+              <div className="bg-white rounded-2xl border border-[var(--border)] p-4 shadow-sm">
+                <h3 className="text-xs font-bold text-[var(--muted-foreground)] uppercase tracking-wider mb-3">
+                  Category
+                </h3>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => handleCategoryChange("all")}
+                    className={cn(
+                      "w-full text-left text-sm px-3 py-2 rounded-xl font-medium transition-all",
+                      selectedCategory === "all"
+                        ? "bg-[var(--primary)] text-white"
+                        : "text-[var(--foreground)] hover:bg-[var(--background)]"
+                    )}
+                  >
+                    All Categories
+                  </button>
+                  {Object.entries(CATEGORY_META).map(([key, meta]) => {
+                    const Icon = meta.icon;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => handleCategoryChange(key)}
+                        className={cn(
+                          "w-full text-left text-sm px-3 py-2 rounded-xl font-medium transition-all flex items-center gap-2",
+                          selectedCategory === key
+                            ? "bg-[var(--primary)] text-white"
+                            : "text-[var(--foreground)] hover:bg-[var(--background)]"
+                        )}
+                      >
+                        <Icon className={cn("w-4 h-4", selectedCategory === key ? "text-white" : meta.color)} aria-hidden="true" />
+                        {meta.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Quick stats */}
+              <div className="bg-gradient-to-br from-[var(--primary)] to-[#0f3f63] rounded-2xl p-4 text-white">
+                <p className="text-xs font-bold uppercase tracking-wider text-white/60 mb-3">Live Stats</p>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-white/70">Open tasks</span>
+                    <span className="font-bold">{MOCK_TASKS.filter((t) => t.status === "open").length}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-white/70">Urgent</span>
+                    <span className="font-bold text-[var(--accent)]">{MOCK_TASKS.filter((t) => t.isUrgent).length}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-white/70">Cities active</span>
+                    <span className="font-bold">{CITIES.length}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </aside>
 
-          {/* Mobile filter drawer */}
-          <AnimatePresence>
-            {showFilters && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-40 lg:hidden"
+          {/* ── TASK GRID ── */}
+          <div className="flex-1 min-w-0">
+            {/* Results header */}
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <p className="text-sm text-[var(--muted-foreground)]">
+                  <span className="font-bold text-[var(--foreground)] text-base">{filtered.length}</span>
+                  {" "}task{filtered.length !== 1 ? "s" : ""} found
+                  {activeCityName && <span> in <span className="font-semibold text-[var(--primary)]">{activeCityName}</span></span>}
+                </p>
+              </div>
+              <Link
+                href="/post-task"
+                className="hidden sm:flex items-center gap-1.5 bg-[var(--accent)] hover:bg-amber-500 text-white text-sm font-bold px-4 py-2 rounded-xl transition-all shadow-sm"
               >
-                <div
-                  className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                  onClick={() => setShowFilters(false)}
-                />
-                <motion.div
-                  initial={{ x: "100%" }}
-                  animate={{ x: 0 }}
-                  exit={{ x: "100%" }}
-                  transition={{ duration: 0.28, ease: "easeOut" }}
-                  className="absolute bottom-0 right-0 top-0 w-72 overflow-y-auto bg-[var(--card)] p-5 shadow-2xl"
-                >
-                  <FilterPanel
-                    filters={filters}
-                    onChange={setFilters}
-                    onReset={() => setFilters(DEFAULT_FILTERS)}
-                    onClose={() => setShowFilters(false)}
-                  />
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                + Post a Task
+              </Link>
+            </div>
 
-          {/* Task grid */}
-          <div className="min-w-0 flex-1">
-            {results.length === 0 ? (
-              <EmptyState onReset={() => { setFilters(DEFAULT_FILTERS); setSearch(""); }} />
-            ) : (
+            {paginated.length > 0 ? (
               <motion.div
                 variants={staggerContainer}
                 initial="hidden"
                 animate="visible"
-                className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+                className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"
               >
-                {results.map((task, i) => (
-                  <TaskCard key={task.id} task={task} index={i} />
-                ))}
+                <AnimatePresence mode="popLayout">
+                  {paginated.map((task) => (
+                    <TaskCard key={task.id} task={task} />
+                  ))}
+                </AnimatePresence>
               </motion.div>
-            )}
-
-            {/* Load more CTA */}
-            {results.length > 0 && (
+            ) : (
+              /* ── EMPTY STATE ── */
               <Reveal>
-                <div className="mt-10 flex flex-col items-center gap-3 text-center">
-                  <p className="text-sm text-[var(--muted-foreground)]">
-                    Showing all {results.length} matching tasks.
-                  </p>
-                  <Link
-                    href="/post-task"
-                    className="inline-flex items-center gap-2 rounded-xl border border-[var(--brand-primary)]/30 bg-[var(--brand-primary)]/8 px-5 py-2.5 text-sm font-semibold text-[var(--brand-primary)] transition-all duration-200 hover:bg-[var(--brand-primary)]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]/50"
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <div className="w-20 h-20 rounded-full bg-[var(--border)] flex items-center justify-center mb-5">
+                    <Search className="w-8 h-8 text-[var(--muted-foreground)]" aria-hidden="true" />
+                  </div>
+                  <p
+                    className="text-2xl font-bold text-[var(--foreground)] mb-1"
+                    style={{ fontFamily: "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif", direction: "rtl" }}
                   >
-                    <Sparkles className="h-4 w-4" aria-hidden="true" />
-                    Don't see what you need? Post your own task
-                  </Link>
+                    کوئی کام نہیں ملا
+                  </p>
+                  <p className="text-[var(--muted-foreground)] text-sm mb-6">
+                    No tasks found matching your filters.
+                  </p>
+                  <button
+                    onClick={clearFilters}
+                    className="btn-primary text-sm"
+                  >
+                    Clear Filters
+                  </button>
                 </div>
               </Reveal>
             )}
-          </div>
-        </div>
 
-        {/* Trust strip */}
-        <Reveal>
-          <section
-            aria-label="Trust and safety"
-            className="mt-16 rounded-3xl border border-white/8 bg-gradient-to-r from-[var(--brand-primary)]/6 via-transparent to-[var(--brand-accent)]/6 px-6 py-8 md:px-10"
-          >
-            <div className="flex flex-col items-center gap-6 text-center md:flex-row md:text-left">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--brand-primary)]/12 text-[var(--brand-primary)]">
-                <CheckCircle className="h-7 w-7" aria-hidden="true" />
+            {/* ── PAGINATION ── */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 mt-10">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--foreground)] disabled:opacity-40 hover:bg-[var(--background)] transition-all"
+                >
+                  Previous
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={cn(
+                      "w-9 h-9 rounded-xl text-sm font-semibold transition-all",
+                      p === page
+                        ? "bg-[var(--primary)] text-white"
+                        : "border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--background)]"
+                    )}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--foreground)] disabled:opacity-40 hover:bg-[var(--background)] transition-all"
+                >
+                  Next
+                </button>
               </div>
-              <div className="flex-1">
-                <h2 className="text-lg font-bold text-[var(--foreground)]">
-                  Safe, verified, and transparent
-                </h2>
-                <p className="mt-1 text-sm leading-relaxed text-[var(--muted-foreground)]">
-                  Every tasker goes through CNIC verification before taking paid work. Contact details are redacted from chat until a task is assigned. Disputes are handled by our trust team within 24 hours.
-                </p>
-              </div>
+            )}
+
+            {/* Mobile post task CTA */}
+            <div className="sm:hidden mt-8">
               <Link
-                href="/verification-status"
-                className="shrink-0 rounded-xl bg-[var(--brand-primary)] px-5 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]/50"
+                href="/post-task"
+                className="flex items-center justify-center gap-2 w-full bg-[var(--accent)] hover:bg-amber-500 text-white font-bold py-3 rounded-2xl transition-all shadow-md"
               >
-                Learn more
+                <span>+ Post a Task</span>
               </Link>
             </div>
-          </section>
-        </Reveal>
+          </div>
+        </div>
       </div>
     </main>
   );

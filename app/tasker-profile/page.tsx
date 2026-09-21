@@ -1,26 +1,54 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Star, CheckCircle, Clock, MapPin, Shield, Edit, Camera, Award, ThumbsUp, AlertCircle, ChevronRight, Briefcase, Calendar, User } from 'lucide-react';
+import { Star, CheckCircle, MapPin, Shield, Edit, Award, ThumbsUp, AlertCircle, Briefcase, Calendar, User, TrendingUp, Wallet, Clock, ChevronRight } from 'lucide-react';
 import Link from "next/link";
 import { Reveal } from "@/components/Reveal";
-import { fadeInUp, staggerContainer, scaleIn } from "@/lib/motion";
-import { TASK_CATEGORIES, VerificationStatus, TaskCategory, TaskStatus, getStatusLabel, getStatusColor } from "@/lib/data";
-type COMMISSION_RATE_DEFAULT = any;
-const COMMISSION_RATE_DEFAULT: any = [];
-type BALANCE_MINIMUM_PKR = any;
-const BALANCE_MINIMUM_PKR: any = [];
-type CITIES = any;
-const CITIES: any = [];
-type getVerificationLabel = any;
-const getVerificationLabel: any = [];
-type getVerificationColor = any;
-const getVerificationColor: any = [];
-type formatPkr = any;
-const formatPkr: any = [];
+import { fadeInUp, staggerContainer } from "@/lib/motion";
+import {
+  VerificationStatus,
+  TaskCategory,
+  TaskStatus,
+  COMMISSION_RATE,
+  MIN_BALANCE_PKR,
+  formatPKR,
+  getVerificationLabel,
+} from "@/lib/data";
+import { cn } from "@/lib/utils";
 
-// ─── Inline types & mock data ────────────────────────────────────────────────
+const COMMISSION_RATE_DEFAULT = COMMISSION_RATE;
+void COMMISSION_RATE_DEFAULT;
+const BALANCE_MINIMUM_PKR = MIN_BALANCE_PKR;
+const formatPkr = formatPKR;
+
+function getVerificationColor(status: VerificationStatus): string {
+  switch (status) {
+    case "verified":
+      return "bg-emerald-100 text-emerald-700 border-emerald-200";
+    case "submitted":
+      return "bg-amber-100 text-amber-700 border-amber-200";
+    case "restricted":
+      return "bg-red-100 text-red-700 border-red-200";
+    default:
+      return "bg-gray-100 text-gray-600 border-gray-200";
+  }
+}
+
+function getVerificationIcon(status: VerificationStatus) {
+  switch (status) {
+    case "verified":
+      return CheckCircle;
+    case "submitted":
+      return Clock;
+    case "restricted":
+      return AlertCircle;
+    default:
+      return User;
+  }
+}
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface Review {
   id: string;
@@ -61,6 +89,8 @@ interface ProfileData {
   avgResponseTimeMin: number;
 }
 
+// ─── Mock Data ────────────────────────────────────────────────────────────────
+
 const MOCK_PROFILE: ProfileData = {
   id: "tasker-001",
   name: "Bilal Ahmed",
@@ -72,7 +102,7 @@ const MOCK_PROFILE: ProfileData = {
   reviewCount: 38,
   completedTasks: 52,
   memberSince: "March 2024",
-  categories: ["small_repairs", "household_assistance", "moving_delivery", "errands"],
+  categories: ["Small Repairs & Maintenance", "Household Assistance", "Moving & Delivery", "Errands & Shopping"],
   balancePkr: 2400,
   totalEarnedPkr: 47800,
   responseRate: 94,
@@ -85,7 +115,8 @@ const MOCK_REVIEWS: Review[] = [
     posterName: "Sana Malik",
     posterInitials: "SM",
     rating: 5,
-    comment: "Bilal fixed our leaking tap and a broken cabinet hinge in under an hour. Very professional and tidy. Will definitely hire again.",
+    comment:
+      "Bilal fixed our leaking tap and a broken cabinet hinge in under an hour. Very professional and tidy. Will definitely hire again.",
     taskTitle: "Fix leaking tap and cabinet hinge",
     date: "12 Jun 2025",
   },
@@ -94,7 +125,8 @@ const MOCK_REVIEWS: Review[] = [
     posterName: "Tariq Hussain",
     posterInitials: "TH",
     rating: 5,
-    comment: "Picked up my documents from the NADRA office and delivered them safely. Kept me updated throughout. Highly recommended.",
+    comment:
+      "Picked up my documents from the NADRA office and delivered them safely. Kept me updated throughout. Highly recommended.",
     taskTitle: "NADRA document collection errand",
     date: "4 Jun 2025",
   },
@@ -103,7 +135,8 @@ const MOCK_REVIEWS: Review[] = [
     posterName: "Ayesha Raza",
     posterInitials: "AR",
     rating: 4,
-    comment: "Good work overall. Helped move furniture between two rooms. Took a bit longer than expected but was careful with everything.",
+    comment:
+      "Good work overall. Helped move furniture between two rooms. Took a bit longer than expected but was careful with everything.",
     taskTitle: "Furniture rearrangement — 2 rooms",
     date: "28 May 2025",
   },
@@ -112,7 +145,8 @@ const MOCK_REVIEWS: Review[] = [
     posterName: "Kamran Shah",
     posterInitials: "KS",
     rating: 5,
-    comment: "Installed a ceiling fan perfectly. Came prepared with his own tools. Very reasonable bid too.",
+    comment:
+      "Installed a ceiling fan perfectly. Came prepared with his own tools. Very reasonable bid too.",
     taskTitle: "Ceiling fan installation",
     date: "19 May 2025",
   },
@@ -121,151 +155,84 @@ const MOCK_REVIEWS: Review[] = [
     posterName: "Nadia Farooq",
     posterInitials: "NF",
     rating: 4,
-    comment: "Helped with grocery shopping and delivery. Friendly and honest. Minor delay but communicated well.",
-    taskTitle: "Weekly grocery run — DHA Phase 6",
+    comment:
+      "Helped with grocery shopping and delivered on time. Friendly and communicative throughout.",
+    taskTitle: "Weekly grocery run — Imtiaz Store",
     date: "10 May 2025",
   },
 ];
 
-const MOCK_COMPLETED: CompletedTask[] = [
+const MOCK_COMPLETED_TASKS: CompletedTask[] = [
   {
-    id: "t1",
+    id: "ct1",
     title: "Fix leaking tap and cabinet hinge",
-    category: "small_repairs",
-    budgetPkr: 800,
-    city: "Karachi",
-    completedAt: "12 Jun 2025",
-    status: "completed",
-    earnedPkr: 704,
-  },
-  {
-    id: "t2",
-    title: "NADRA document collection errand",
-    category: "errands",
-    budgetPkr: 500,
-    city: "Karachi",
-    completedAt: "4 Jun 2025",
-    status: "completed",
-    earnedPkr: 440,
-  },
-  {
-    id: "t3",
-    title: "Furniture rearrangement — 2 rooms",
-    category: "moving_delivery",
+    category: "Small Repairs & Maintenance",
     budgetPkr: 1200,
     city: "Karachi",
-    completedAt: "28 May 2025",
+    completedAt: "12 Jun 2025",
     status: "completed",
     earnedPkr: 1056,
   },
   {
-    id: "t4",
+    id: "ct2",
+    title: "NADRA document collection errand",
+    category: "Errands & Shopping",
+    budgetPkr: 700,
+    city: "Karachi",
+    completedAt: "4 Jun 2025",
+    status: "completed",
+    earnedPkr: 616,
+  },
+  {
+    id: "ct3",
+    title: "Furniture rearrangement — 2 rooms",
+    category: "Household Assistance",
+    budgetPkr: 2000,
+    city: "Karachi",
+    completedAt: "28 May 2025",
+    status: "completed",
+    earnedPkr: 1760,
+  },
+  {
+    id: "ct4",
     title: "Ceiling fan installation",
-    category: "small_repairs",
-    budgetPkr: 600,
+    category: "Small Repairs & Maintenance",
+    budgetPkr: 1500,
     city: "Karachi",
     completedAt: "19 May 2025",
     status: "completed",
-    earnedPkr: 528,
+    earnedPkr: 1320,
   },
   {
-    id: "t5",
-    title: "Weekly grocery run — DHA Phase 6",
-    category: "errands",
-    budgetPkr: 400,
+    id: "ct5",
+    title: "Weekly grocery run — Imtiaz Store",
+    category: "Errands & Shopping",
+    budgetPkr: 600,
     city: "Karachi",
     completedAt: "10 May 2025",
     status: "completed",
-    earnedPkr: 352,
+    earnedPkr: 528,
   },
 ];
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Star renderer ────────────────────────────────────────────────────────────
 
-function StarRating({ rating, size = 16 }: { rating: number; size?: number }) {
+function StarRow({ rating, size = 14 }: { rating: number; size?: number }) {
   return (
     <span className="flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map((s) => (
+      {[1, 2, 3, 4, 5].map((i) => (
         <Star
-          key={s}
-          size={size}
-          className={
-            s <= Math.round(rating)
-              ? "fill-[var(--brand-accent)] text-[var(--brand-accent)]"
-              : "fill-transparent text-neutral-300"
-          }
+          key={i}
+          style={{ width: size, height: size }}
+          className={cn(
+            "flex-shrink-0",
+            i <= Math.round(rating)
+              ? "fill-[var(--accent)] text-[var(--accent)]"
+              : "fill-gray-200 text-gray-200"
+          )}
         />
       ))}
     </span>
-  );
-}
-
-function CategoryPill({ categoryKey }: { categoryKey: TaskCategory }) {
-  const cat = TASK_CATEGORIES.find((c) => c.key === categoryKey);
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--brand-accent)]/10 px-3 py-1 text-xs font-medium text-[var(--brand-accent-dark)]">
-      {cat?.label ?? categoryKey}
-    </span>
-  );
-}
-
-function VerificationBadge({ status }: { status: VerificationStatus }) {
-  const label = getVerificationLabel(status);
-  const color = getVerificationColor(status);
-  const icons: Record<VerificationStatus, React.ReactNode> = {
-    verified: <CheckCircle size={14} />,
-    submitted: <Clock size={14} />,
-    unverified: <AlertCircle size={14} />,
-    restricted: <Shield size={14} />,
-  };
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${color}`}
-    >
-      {icons[status]}
-      {label}
-    </span>
-  );
-}
-
-function InitialsAvatar({ initials, size = "md" }: { initials: string; size?: "sm" | "md" | "lg" }) {
-  const sizeClass = size === "lg" ? "w-16 h-16 text-xl" : size === "md" ? "w-10 h-10 text-sm" : "w-8 h-8 text-xs";
-  return (
-    <div
-      className={`${sizeClass} rounded-full bg-[var(--brand-accent)] flex items-center justify-center font-bold text-white flex-shrink-0`}
-    >
-      {initials}
-    </div>
-  );
-}
-
-// ─── Stat card ────────────────────────────────────────────────────────────────
-
-function StatCard({
-  label,
-  value,
-  sub,
-  icon,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <motion.div
-      variants={scaleIn}
-      className="rounded-2xl border border-black/5 bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-8px_rgba(0,0,0,0.08)] flex flex-col gap-3"
-    >
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide">{label}</span>
-        <span className="text-[var(--brand-accent)]">{icon}</span>
-      </div>
-      <div>
-        <p className="text-2xl font-bold text-neutral-900 tracking-tight">{value}</p>
-        {sub && <p className="text-xs text-neutral-400 mt-0.5">{sub}</p>}
-      </div>
-    </motion.div>
   );
 }
 
@@ -273,329 +240,501 @@ function StatCard({
 
 export default function TaskerProfilePage() {
   const [activeTab, setActiveTab] = useState<"reviews" | "history">("reviews");
-  const [isEditing, setIsEditing] = useState(false);
-  const [bio, setBio] = useState(MOCK_PROFILE.bio);
-  const [editBio, setEditBio] = useState(MOCK_PROFILE.bio);
-
   const profile = MOCK_PROFILE;
-  const commissionRate = COMMISSION_RATE_DEFAULT;
 
-  function handleSaveBio() {
-    setBio(editBio);
-    setIsEditing(false);
-  }
+  const initials = profile.name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  const VerifIcon = getVerificationIcon(profile.verificationStatus);
+  const isBalanceSufficient = profile.balancePkr >= BALANCE_MINIMUM_PKR;
+
+  const STATS = [
+    {
+      icon: Briefcase,
+      label: "Mukammal Kaam",
+      urdu: "مکمل کام",
+      value: profile.completedTasks.toString(),
+    },
+    {
+      icon: Star,
+      label: "Rating",
+      urdu: "ریٹنگ",
+      value: profile.rating.toFixed(1),
+    },
+    {
+      icon: ThumbsUp,
+      label: "Response Rate",
+      urdu: "جواب کی شرح",
+      value: `${profile.responseRate}%`,
+    },
+    {
+      icon: Calendar,
+      label: "Member Since",
+      urdu: "رکنیت",
+      value: profile.memberSince,
+    },
+  ];
 
   return (
-    <main className="min-h-screen bg-neutral-50 pb-20">
-      {/* ── Hero / Profile Header ── */}
-      <Reveal>
-        <section className="bg-white border-b border-black/5">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
-            <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-center">
-              {/* Avatar */}
-              <div className="relative flex-shrink-0">
-                <div className="w-24 h-24 rounded-2xl bg-[var(--brand-accent)] flex items-center justify-center text-3xl font-bold text-white shadow-[0_4px_16px_rgba(0,0,0,0.12)]">
-                  BA
-                </div>
-                <button
-                  aria-label="Change profile photo"
-                  className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-white border border-black/10 shadow flex items-center justify-center text-neutral-500 hover:text-[var(--brand-accent)] transition-colors"
-                >
-                  <Camera size={14} />
-                </button>
+    <main className="min-h-screen bg-[var(--background)] pb-16">
+      {/* ── PROFILE HEADER ── */}
+      <section
+        className="relative overflow-hidden"
+        style={{
+          background:
+            "linear-gradient(135deg, #1B6CA8 0%, #155a8a 55%, #0f3f63 100%)",
+        }}
+      >
+        {/* Decorative pattern */}
+        <div
+          className="absolute inset-0 opacity-[0.06]"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 20% 50%, #F5A623 0%, transparent 45%), radial-gradient(circle at 80% 20%, #ffffff 0%, transparent 40%)",
+          }}
+          aria-hidden="true"
+        />
+        {/* Geometric accent lines */}
+        <div
+          className="absolute bottom-0 left-0 right-0 h-1"
+          style={{ background: "linear-gradient(90deg, #F5A623, #1B6CA8, #F5A623)" }}
+          aria-hidden="true"
+        />
+
+        <div className="container relative z-10 py-8 md:py-12">
+          {/* Edit button — top right */}
+          <div className="flex justify-end mb-6">
+            <Link
+              href="/settings"
+              className="inline-flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white text-sm font-semibold px-4 py-2 rounded-full border border-white/20 transition-all duration-200 backdrop-blur-sm"
+            >
+              <Edit className="w-4 h-4" />
+              Profile Edit Karein
+            </Link>
+          </div>
+
+          {/* Avatar + identity */}
+          <div className="flex flex-col sm:flex-row items-center sm:items-end gap-5">
+            {/* Avatar circle */}
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              className="relative flex-shrink-0"
+            >
+              <div
+                className="w-24 h-24 md:w-28 md:h-28 rounded-full flex items-center justify-center text-white font-bold text-3xl md:text-4xl border-4 border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.25)]"
+                style={{ background: "linear-gradient(135deg, #1B6CA8, #0f3f63)" }}
+              >
+                {initials}
+              </div>
+              {/* Verification dot */}
+              <span
+                className={cn(
+                  "absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center border-2 border-white shadow-md",
+                  profile.verificationStatus === "verified"
+                    ? "bg-emerald-500"
+                    : profile.verificationStatus === "submitted"
+                    ? "bg-amber-400"
+                    : profile.verificationStatus === "restricted"
+                    ? "bg-red-500"
+                    : "bg-gray-400"
+                )}
+              >
+                <VerifIcon className="w-3.5 h-3.5 text-white" />
+              </span>
+            </motion.div>
+
+            {/* Name + meta */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, delay: 0.1 }}
+              className="text-center sm:text-left"
+            >
+              <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight leading-tight">
+                {profile.name}
+              </h1>
+
+              {/* Verification badge */}
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-xs font-semibold border",
+                  getVerificationColor(profile.verificationStatus)
+                )}
+              >
+                <VerifIcon className="w-3.5 h-3.5" />
+                {getVerificationLabel(profile.verificationStatus)}
+              </span>
+
+              {/* Location */}
+              <div className="flex items-center justify-center sm:justify-start gap-1.5 mt-2.5 text-white/75 text-sm">
+                <MapPin className="w-4 h-4 flex-shrink-0" />
+                <span>
+                  {profile.area}, {profile.city}
+                </span>
               </div>
 
-              {/* Name + meta */}
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-3 mb-1">
-                  <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">{profile.name}</h1>
-                  <VerificationBadge status={profile.verificationStatus} />
-                </div>
-                <div className="flex flex-wrap items-center gap-4 text-sm text-neutral-500 mb-3">
-                  <span className="flex items-center gap-1.5">
-                    <MapPin size={13} />
-                    {profile.area}, {profile.city}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Calendar size={13} />
-                    Member since {profile.memberSince}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <StarRating rating={profile.rating} size={16} />
-                  <span className="text-sm font-semibold text-neutral-800">{profile.rating.toFixed(1)}</span>
-                  <span className="text-sm text-neutral-400">({profile.reviewCount} reviews)</span>
-                </div>
+              {/* Rating */}
+              <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
+                <StarRow rating={profile.rating} size={16} />
+                <span className="text-white font-bold text-sm">
+                  {profile.rating.toFixed(1)}
+                </span>
+                <span className="text-white/60 text-sm">
+                  ({profile.reviewCount} reviews)
+                </span>
               </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
 
-              {/* Actions */}
-              <div className="flex gap-2 flex-shrink-0">
-                <Link
-                  href="/verification-status"
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-black/10 bg-white px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
-                >
-                  <Shield size={14} />
-                  Verification
-                </Link>
-                <Link
-                  href="/tasker-balance-transaction-history"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-accent)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--brand-accent-dark)] transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.12)]"
-                >
-                  Balance
-                  <ChevronRight size={14} />
-                </Link>
+      {/* ── STATS ROW ── */}
+      <section className="container -mt-1">
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-5"
+        >
+          {STATS.map((stat) => (
+            <motion.div
+              key={stat.label}
+              variants={fadeInUp}
+              className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 flex flex-col items-center text-center shadow-[0_2px_8px_rgba(26,26,46,0.07)] hover:shadow-[0_4px_16px_rgba(27,108,168,0.12)] transition-shadow duration-200"
+            >
+              <div                           className="w-9 h-9 rounded-full bg-[#EBF4FB] flex items-center justify-center mb-2">
+                <stat.icon className="text-[var(--primary)]" style={{ width: 18, height: 18 }} />
+              </div>
+              <p className="text-xl font-bold text-[var(--foreground)] leading-tight">
+                {stat.value}
+              </p>
+              <p className="text-xs font-medium text-[var(--foreground)] mt-0.5 font-semibold">
+                {stat.label}
+              </p>
+              <p className="text-[10px] text-[var(--muted-foreground)] mt-0.5 font-medium" dir="rtl">
+                {stat.urdu}
+              </p>
+            </motion.div>
+          ))}
+        </motion.div>
+      </section>
+
+      <div className="container mt-5 space-y-4">
+        {/* ── BIO ── */}
+        <Reveal>
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-[0_2px_8px_rgba(26,26,46,0.06)]">
+            <div className="flex items-center gap-2 mb-3">
+              <User className="w-5 h-5 text-[var(--primary)]" />
+              <div>
+                <h2 className="text-base font-bold text-[var(--foreground)] leading-tight">
+                  Mere Baare Mein
+                </h2>
+                <p className="text-xs text-[var(--muted-foreground)]" dir="rtl">
+                  میرے بارے میں
+                </p>
               </div>
             </div>
+            <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">
+              {profile.bio}
+            </p>
           </div>
-        </section>
-      </Reveal>
-
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 mt-8 space-y-8">
-        {/* ── Stats Grid ── */}
-        <Reveal>
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            animate="visible"
-            className="grid grid-cols-2 sm:grid-cols-4 gap-4"
-          >
-            <StatCard
-              label="Tasks Done"
-              value={String(profile.completedTasks)}
-              sub="all time"
-              icon={<Briefcase size={18} />}
-            />
-            <StatCard
-              label="Total Earned"
-              value={formatPkr(profile.totalEarnedPkr)}
-              sub={`after ${(commissionRate * 100).toFixed(0)}% commission`}
-              icon={<Award size={18} />}
-            />
-            <StatCard
-              label="Response Rate"
-              value={`${profile.responseRate}%`}
-              sub={`avg ${profile.avgResponseTimeMin} min`}
-              icon={<ThumbsUp size={18} />}
-            />
-            <StatCard
-              label="Balance"
-              value={formatPkr(profile.balancePkr)}
-              sub={`min ${formatPkr(BALANCE_MINIMUM_PKR)} required`}
-              icon={<Shield size={18} />}
-            />
-          </motion.div>
         </Reveal>
 
-        {/* ── Bio ── */}
+        {/* ── CATEGORIES ── */}
         <Reveal>
-          <div className="rounded-2xl border border-black/5 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-8px_rgba(0,0,0,0.08)]">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-semibold text-neutral-900 flex items-center gap-2">
-                <User size={16} className="text-[var(--brand-accent)]" />
-                About Me
-              </h2>
-              {!isEditing && (
-                <button
-                  onClick={() => { setEditBio(bio); setIsEditing(true); }}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-500 hover:text-[var(--brand-accent)] transition-colors"
-                >
-                  <Edit size={13} />
-                  Edit
-                </button>
-              )}
-            </div>
-            {isEditing ? (
-              <div className="space-y-3">
-                <textarea
-                  value={editBio}
-                  onChange={(e) => setEditBio(e.target.value)}
-                  rows={5}
-                  maxLength={500}
-                  className="w-full rounded-xl border border-black/10 bg-neutral-50 px-4 py-3 text-sm text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[var(--brand-accent)]/40 resize-none"
-                />
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-neutral-400">{editBio.length}/500 characters</span>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setIsEditing(false)}
-                      className="rounded-xl border border-black/10 px-4 py-2 text-xs font-medium text-neutral-600 hover:bg-neutral-50 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleSaveBio}
-                      className="rounded-xl bg-[var(--brand-accent)] px-4 py-2 text-xs font-semibold text-white hover:bg-[var(--brand-accent-dark)] transition-colors"
-                    >
-                      Save
-                    </button>
-                  </div>
-                </div>
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-[0_2px_8px_rgba(26,26,46,0.06)]">
+            <div className="flex items-center gap-2 mb-3">
+              <Briefcase className="w-5 h-5 text-[var(--primary)]" />
+              <div>
+                <h2 className="text-base font-bold text-[var(--foreground)] leading-tight">
+                  Kaam Ki Categories
+                </h2>
+                <p className="text-xs text-[var(--muted-foreground)]" dir="rtl">
+                  کام کی اقسام
+                </p>
               </div>
-            ) : (
-              <p className="text-sm text-neutral-600 leading-relaxed">{bio}</p>
-            )}
-          </div>
-        </Reveal>
-
-        {/* ── Specialisations ── */}
-        <Reveal>
-          <div className="rounded-2xl border border-black/5 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-8px_rgba(0,0,0,0.08)]">
-            <h2 className="text-base font-semibold text-neutral-900 mb-4 flex items-center gap-2">
-              <Briefcase size={16} className="text-[var(--brand-accent)]" />
-              Specialisations
-            </h2>
+            </div>
             <div className="flex flex-wrap gap-2">
               {profile.categories.map((cat) => (
-                <CategoryPill key={cat} categoryKey={cat} />
-              ))}
-            </div>
-          </div>
-        </Reveal>
-
-        {/* ── Commission Info ── */}
-        <Reveal>
-          <div className="rounded-2xl border border-[var(--brand-accent)]/20 bg-[var(--brand-accent)]/5 p-5 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-neutral-800 mb-1">Platform Commission</p>
-              <p className="text-xs text-neutral-500 leading-relaxed">
-                Asan Kaam deducts a <span className="font-semibold text-neutral-700">{(commissionRate * 100).toFixed(0)}% commission</span> from your agreed task amount upon completion. Commission is reserved from your balance when you are assigned a task and released if the task is cancelled before starting.
-              </p>
-            </div>
-            <div className="flex-shrink-0 text-center bg-white rounded-xl px-5 py-3 border border-black/5 shadow-sm">
-              <p className="text-2xl font-bold text-[var(--brand-accent)]">{(commissionRate * 100).toFixed(0)}%</p>
-              <p className="text-xs text-neutral-500">current rate</p>
-            </div>
-          </div>
-        </Reveal>
-
-        {/* ── Reviews / History Tabs ── */}
-        <Reveal>
-          <div className="rounded-2xl border border-black/5 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-8px_rgba(0,0,0,0.08)] overflow-hidden">
-            {/* Tab bar */}
-            <div className="flex border-b border-black/5">
-              {(["reviews", "history"] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`flex-1 py-4 text-sm font-semibold transition-colors ${
-                    activeTab === tab
-                      ? "text-[var(--brand-accent)] border-b-2 border-[var(--brand-accent)] bg-[var(--brand-accent)]/5"
-                      : "text-neutral-500 hover:text-neutral-700"
-                  }`}
+                <span
+                  key={cat}
+                  className="inline-flex items-center gap-1.5 bg-[#FFF8EC] text-[#B87A10] border border-[#F5A623]/30 text-xs font-semibold px-3 py-1.5 rounded-full"
                 >
-                  {tab === "reviews" ? `Reviews (${MOCK_REVIEWS.length})` : `Work History (${MOCK_COMPLETED.length})`}
-                </button>
+                  <Award className="w-3 h-3" />
+                  {cat}
+                </span>
               ))}
+            </div>
+          </div>
+        </Reveal>
+
+        {/* ── BALANCE INFO ── */}
+        <Reveal>
+          <div
+            className={cn(
+              "border rounded-xl p-5 shadow-[0_2px_8px_rgba(26,26,46,0.06)]",
+              isBalanceSufficient
+                ? "bg-emerald-50 border-emerald-200"
+                : "bg-amber-50 border-amber-200"
+            )}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div
+                  className={cn(
+                    "w-9 h-9 rounded-full flex items-center justify-center",
+                    isBalanceSufficient ? "bg-emerald-100" : "bg-amber-100"
+                  )}
+                >
+                  <Wallet
+                    className={cn(
+                      "w-4.5 h-4.5",
+                      isBalanceSufficient ? "text-emerald-600" : "text-amber-600"
+                    )}
+                    style={{ width: 18, height: 18 }}
+                  />
+                </div>
+                <div>
+                  <p
+                    className={cn(
+                      "text-xs font-semibold uppercase tracking-wide",
+                      isBalanceSufficient ? "text-emerald-700" : "text-amber-700"
+                    )}
+                  >
+                    Platform Balance
+                  </p>
+                  <p
+                    className={cn(
+                      "text-xl font-bold",
+                      isBalanceSufficient ? "text-emerald-800" : "text-amber-800"
+                    )}
+                  >
+                    {formatPkr(profile.balancePkr)}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p
+                  className={cn(
+                    "text-xs",
+                    isBalanceSufficient ? "text-emerald-600" : "text-amber-600"
+                  )}
+                >
+                  Minimum required
+                </p>
+                <p
+                  className={cn(
+                    "text-sm font-bold",
+                    isBalanceSufficient ? "text-emerald-700" : "text-amber-700"
+                  )}
+                >
+                  {formatPkr(BALANCE_MINIMUM_PKR)}
+                </p>
+              </div>
+            </div>
+
+            {!isBalanceSufficient && (
+              <div className="mt-3 flex items-center gap-2 bg-amber-100 rounded-lg px-3 py-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                <p className="text-xs text-amber-700 font-medium">
+                  Balance kam hai. Bidding ke liye top up karein.
+                </p>
+              </div>
+            )}
+
+            {isBalanceSufficient && (
+              <div className="mt-3 flex items-center gap-2 bg-emerald-100 rounded-lg px-3 py-2">
+                <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                <p className="text-xs text-emerald-700 font-medium">
+                  Balance theek hai. Aap bid kar sakte hain.
+                </p>
+              </div>
+            )}
+
+            <div className="mt-3 flex justify-end">
+              <Link
+                href="/tasker-balance-transaction-history"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--primary)] hover:underline"
+              >
+                Balance history dekhein
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+        </Reveal>
+
+        {/* ── TABS: REVIEWS / WORK HISTORY ── */}
+        <Reveal>
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-[0_2px_8px_rgba(26,26,46,0.06)] overflow-hidden">
+            {/* Tab bar */}
+            <div className="flex border-b border-[var(--border)]">
+              <button
+                onClick={() => setActiveTab("reviews")}
+                className={cn(
+                  "flex-1 py-3.5 text-sm font-semibold transition-colors duration-150 flex items-center justify-center gap-2",
+                  activeTab === "reviews"
+                    ? "text-[var(--primary)] border-b-2 border-[var(--primary)] bg-[#EBF4FB]/40"
+                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                )}
+              >
+                <Star className="w-4 h-4" />
+                <span>Reviews</span>
+                <span
+                  className="text-[10px] font-medium text-[var(--muted-foreground)]"
+                  dir="rtl"
+                >
+                  جائزے
+                </span>
+              </button>
+              <button
+                onClick={() => setActiveTab("history")}
+                className={cn(
+                  "flex-1 py-3.5 text-sm font-semibold transition-colors duration-150 flex items-center justify-center gap-2",
+                  activeTab === "history"
+                    ? "text-[var(--primary)] border-b-2 border-[var(--primary)] bg-[#EBF4FB]/40"
+                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                )}
+              >
+                <TrendingUp className="w-4 h-4" />
+                <span>Kaam History</span>
+              </button>
             </div>
 
             {/* Reviews tab */}
             {activeTab === "reviews" && (
-              <div className="divide-y divide-black/5">
-                {MOCK_REVIEWS.map((review, i) => (
+              <motion.div
+                key="reviews"
+                variants={staggerContainer}
+                initial="hidden"
+                animate="visible"
+                className="divide-y divide-[var(--border)]"
+              >
+                {MOCK_REVIEWS.map((review) => (
                   <motion.div
                     key={review.id}
                     variants={fadeInUp}
-                    initial="hidden"
-                    animate="visible"
-                    transition={{ delay: i * 0.06 }}
-                    className="p-5 flex gap-4"
+                    className="p-4 hover:bg-[var(--background)] transition-colors duration-150"
                   >
-                    <InitialsAvatar initials={review.posterInitials} size="md" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span className="text-sm font-semibold text-neutral-800">{review.posterName}</span>
-                        <StarRating rating={review.rating} size={13} />
-                        <span className="text-xs text-neutral-400 ml-auto">{review.date}</span>
+                    <div className="flex items-start gap-3">
+                      {/* Poster avatar */}
+                      <div className="w-9 h-9 rounded-full bg-[var(--primary)] flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-sm">
+                        {review.posterInitials}
                       </div>
-                      <p className="text-xs text-[var(--brand-accent-dark)] font-medium mb-1.5">{review.taskTitle}</p>
-                      <p className="text-sm text-neutral-600 leading-relaxed">{review.comment}</p>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <p className="text-sm font-semibold text-[var(--foreground)]">
+                            {review.posterName}
+                          </p>
+                          <span className="text-xs text-[var(--muted-foreground)]">
+                            {review.date}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <StarRow rating={review.rating} size={12} />
+                          <span className="text-xs font-bold text-[var(--foreground)]">
+                            {review.rating}.0
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-[var(--muted-foreground)] mt-0.5 font-medium">
+                          {review.taskTitle}
+                        </p>
+
+                        <p className="text-sm text-[var(--foreground)] mt-1.5 leading-relaxed">
+                          {review.comment}
+                        </p>
+                      </div>
                     </div>
                   </motion.div>
                 ))}
-              </div>
+              </motion.div>
             )}
 
-            {/* History tab */}
+            {/* Work history tab */}
             {activeTab === "history" && (
-              <div className="divide-y divide-black/5">
-                {MOCK_COMPLETED.map((task, i) => {
-                  const cat = TASK_CATEGORIES.find((c) => c.key === task.category);
-                  const statusLabel = getStatusLabel(task.status);
-                  const statusColor = getStatusColor(task.status);
-                  return (
-                    <motion.div
-                      key={task.id}
-                      variants={fadeInUp}
-                      initial="hidden"
-                      animate="visible"
-                      transition={{ delay: i * 0.06 }}
-                      className="p-5 flex items-center gap-4"
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-[var(--brand-accent)]/10 flex items-center justify-center flex-shrink-0">
-                        <Briefcase size={16} className="text-[var(--brand-accent)]" />
-                      </div>
+              <motion.div
+                key="history"
+                variants={staggerContainer}
+                initial="hidden"
+                animate="visible"
+                className="divide-y divide-[var(--border)]"
+              >
+                {MOCK_COMPLETED_TASKS.map((task) => (
+                  <motion.div
+                    key={task.id}
+                    variants={fadeInUp}
+                    className="p-4 hover:bg-[var(--background)] transition-colors duration-150"
+                  >
+                    <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-neutral-800 truncate">{task.title}</p>
-                        <div className="flex flex-wrap items-center gap-2 mt-1">
-                          <span className="text-xs text-neutral-400">{cat?.label ?? task.category}</span>
-                          <span className="text-neutral-200">·</span>
-                          <span className="text-xs text-neutral-400">{task.city}</span>
-                          <span className="text-neutral-200">·</span>
-                          <span className="text-xs text-neutral-400">{task.completedAt}</span>
+                        <p className="text-sm font-semibold text-[var(--foreground)] leading-snug">
+                          {task.title}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className="inline-flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
+                            <Briefcase className="w-3 h-3" />
+                            {task.category}
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
+                            <Calendar className="w-3 h-3" />
+                            {task.completedAt}
+                          </span>
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                        <span className="text-sm font-bold text-neutral-900">{formatPkr(task.earnedPkr)}</span>
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColor}`}>
-                          {statusLabel}
-                        </span>
+
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-sm font-bold text-emerald-600">
+                          +{formatPkr(task.earnedPkr)}
+                        </p>
+                        <p className="text-[10px] text-[var(--muted-foreground)] mt-0.5">
+                          Budget: {formatPkr(task.budgetPkr)}
+                        </p>
                       </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
+                    </div>
+                  </motion.div>
+                ))}
+
+                {/* Total earned summary */}
+                <div className="p-4 bg-[#EBF4FB]/50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-[var(--primary)]" />
+                      <span className="text-sm font-semibold text-[var(--foreground)]">
+                        Total Kamai
+                      </span>
+                    </div>
+                    <span className="text-base font-bold text-[var(--primary)]">
+                      {formatPkr(profile.totalEarnedPkr)}
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
             )}
           </div>
         </Reveal>
 
-        {/* ── Quick Links ── */}
+        {/* ── TRUST FOOTER ── */}
         <Reveal>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[
-              {
-                href: "/verification-status",
-                icon: <Shield size={20} />,
-                label: "Verification Status",
-                sub: "Manage your ID verification",
-              },
-              {
-                href: "/tasker-balance-transaction-history",
-                icon: <Award size={20} />,
-                label: "Balance & Ledger",
-                sub: "View earnings and commissions",
-              },
-              {
-                href: "/my-bids-tasker",
-                icon: <Briefcase size={20} />,
-                label: "My Bids",
-                sub: "Track active and past bids",
-              },
-            ].map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="group flex items-center gap-4 rounded-2xl border border-black/5 bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-8px_rgba(0,0,0,0.08)] hover:border-[var(--brand-accent)]/30 hover:shadow-[0_4px_20px_rgba(0,0,0,0.1)] transition-all duration-300"
-              >
-                <div className="w-10 h-10 rounded-xl bg-[var(--brand-accent)]/10 flex items-center justify-center text-[var(--brand-accent)] group-hover:bg-[var(--brand-accent)] group-hover:text-white transition-colors duration-300 flex-shrink-0">
-                  {link.icon}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-neutral-800 group-hover:text-[var(--brand-accent)] transition-colors">{link.label}</p>
-                  <p className="text-xs text-neutral-400 mt-0.5">{link.sub}</p>
-                </div>
-                <ChevronRight size={16} className="ml-auto text-neutral-300 group-hover:text-[var(--brand-accent)] transition-colors flex-shrink-0" />
-              </Link>
-            ))}
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 flex items-center gap-3 shadow-[0_2px_8px_rgba(26,26,46,0.06)]">
+            <div className="w-9 h-9 rounded-full bg-[#EBF4FB] flex items-center justify-center flex-shrink-0">
+              <Shield className="w-4.5 h-4.5 text-[var(--primary)]" style={{ width: 18, height: 18 }} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-[var(--foreground)]">
+                Verified Tasker
+              </p>
+              <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                Is tasker ki CNIC verification mukammal ho chuki hai. Aap safely kaam de sakte hain.
+              </p>
+            </div>
           </div>
         </Reveal>
       </div>

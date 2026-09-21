@@ -1,259 +1,197 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Wallet, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Clock, CheckCircle, AlertCircle, RefreshCw, Filter, ChevronDown, Info, Shield, Zap } from 'lucide-react';
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import Link from "next/link";
+import { Wallet, ArrowUpCircle, ArrowDownCircle, Lock, Info, Plus, Minus, TrendingUp, Shield, CheckCircle, Clock, AlertCircle, ChevronDown, RefreshCw } from 'lucide-react';
 import { Reveal } from "@/components/Reveal";
-import { fadeInUp, staggerContainer } from "@/lib/motion";
-type TransactionType = any;
-const TransactionType: any = [];
-type COMMISSION_RATE_DEFAULT = any;
-const COMMISSION_RATE_DEFAULT: any = [];
-type formatPkr = any;
-const formatPkr: any = [];
+import { fadeInUp, staggerContainer, scaleIn } from "@/lib/motion";
+import { formatPKR, COMMISSION_RATE, MIN_BALANCE_PKR } from "@/lib/data";
+import { cn } from "@/lib/utils";
 
-// ─── Local constants ────────────────────────────────────────────────────────
+const COMMISSION_RATE_PCT = Math.round(COMMISSION_RATE * 100);
 
-const COMMISSION_RATE_PCT = 12; // 12% — mirrors COMMISSION_RATE_DEFAULT * 100
-const BALANCE_MINIMUM = 500; // PKR — mirrors BALANCE_MINIMUM_PKR
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-function pkr(amount: number): string {
-  return `Rs. ${amount.toLocaleString("en-PK")}`;
-}
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-type TxType = TransactionType;
+type TxType = "credit" | "debit" | "reservation" | "release" | "commission";
+type TxStatus = "completed" | "pending" | "failed" | "reversed";
 
 interface Transaction {
   id: string;
   type: TxType;
-  amountPkr: number;
   description: string;
-  taskTitle?: string;
-  taskId?: string;
+  amountPkr: number;
   date: string;
-  status: "completed" | "pending" | "failed";
-  balanceAfterPkr: number;
+  status: TxStatus;
+  taskTitle?: string;
+  reference?: string;
 }
 
-// ─── Mock data ───────────────────────────────────────────────────────────────
+// ─── Mock Data ────────────────────────────────────────────────────────────────
+
+const MOCK_BALANCE = {
+  totalPkr: 4750,
+  reservedPkr: 420,
+};
 
 const MOCK_TRANSACTIONS: Transaction[] = [
   {
     id: "tx-001",
-    type: "top_up",
+    type: "credit",
+    description: "Balance top-up via EasyPaisa",
     amountPkr: 2000,
-    description: "Balance top-up via JazzCash",
-    date: "2025-06-10T09:15:00Z",
+    date: "2025-06-12T10:30:00Z",
     status: "completed",
-    balanceAfterPkr: 3200,
+    reference: "EP-2025-88123",
   },
   {
     id: "tx-002",
-    type: "commission_reserved",
-    amountPkr: -360,
-    description: "Commission hold on assignment",
-    taskTitle: "Move furniture from DHA to Gulshan",
-    taskId: "task-101",
-    date: "2025-06-09T14:30:00Z",
-    status: "completed",
-    balanceAfterPkr: 1200,
+    type: "reservation",
+    description: "Commission reserved on assignment",
+    amountPkr: 420,
+    date: "2025-06-11T14:15:00Z",
+    status: "pending",
+    taskTitle: "Deep clean 3-bedroom apartment",
+    reference: "TASK-3821",
   },
   {
     id: "tx-003",
-    type: "commission_deducted",
-    amountPkr: -360,
-    description: "Commission deducted on task completion",
-    taskTitle: "Move furniture from DHA to Gulshan",
-    taskId: "task-101",
-    date: "2025-06-09T18:45:00Z",
+    type: "commission",
+    description: "Platform commission deducted",
+    amountPkr: 384,
+    date: "2025-06-10T18:00:00Z",
     status: "completed",
-    balanceAfterPkr: 840,
+    taskTitle: "Fix leaking kitchen tap",
+    reference: "TASK-3790",
   },
   {
     id: "tx-004",
-    type: "top_up",
+    type: "credit",
+    description: "Balance top-up via JazzCash",
     amountPkr: 1500,
-    description: "Balance top-up via EasyPaisa",
-    date: "2025-06-08T11:00:00Z",
+    date: "2025-06-08T09:00:00Z",
     status: "completed",
-    balanceAfterPkr: 1200,
+    reference: "JC-2025-44901",
   },
   {
     id: "tx-005",
-    type: "commission_reserved",
-    amountPkr: -180,
-    description: "Commission hold on assignment",
-    taskTitle: "Grocery run in F-10 Markaz",
-    taskId: "task-098",
-    date: "2025-06-07T10:20:00Z",
-    status: "completed",
-    balanceAfterPkr: -300,
+    type: "release",
+    description: "Commission reservation released (cancelled task)",
+    amountPkr: 312,
+    date: "2025-06-07T11:45:00Z",
+    status: "reversed",
+    taskTitle: "Grocery run from Imtiaz Store",
+    reference: "TASK-3755",
   },
   {
     id: "tx-006",
-    type: "commission_released",
-    amountPkr: 180,
-    description: "Commission released — task cancelled by poster",
-    taskTitle: "Grocery run in F-10 Markaz",
-    taskId: "task-098",
-    date: "2025-06-07T16:00:00Z",
+    type: "commission",
+    description: "Platform commission deducted",
+    amountPkr: 216,
+    date: "2025-06-05T16:30:00Z",
     status: "completed",
-    balanceAfterPkr: -120,
+    taskTitle: "NADRA queue standing — F-8",
+    reference: "TASK-3710",
   },
   {
     id: "tx-007",
-    type: "boost_fee",
-    amountPkr: -99,
-    description: "Urgency boost fee",
-    taskTitle: "Fix leaking tap in Johar Town",
-    taskId: "task-095",
-    date: "2025-06-06T08:00:00Z",
+    type: "debit",
+    description: "Withdrawal to bank account",
+    amountPkr: 3000,
+    date: "2025-06-03T12:00:00Z",
     status: "completed",
-    balanceAfterPkr: -219,
+    reference: "WD-2025-00291",
   },
   {
     id: "tx-008",
-    type: "refund",
-    amountPkr: 99,
-    description: "Boost fee refunded — task not filled",
-    taskTitle: "Fix leaking tap in Johar Town",
-    taskId: "task-095",
-    date: "2025-06-06T20:00:00Z",
+    type: "credit",
+    description: "Balance top-up via EasyPaisa",
+    amountPkr: 5000,
+    date: "2025-05-28T08:20:00Z",
     status: "completed",
-    balanceAfterPkr: -120,
+    reference: "EP-2025-71044",
   },
   {
     id: "tx-009",
-    type: "top_up",
-    amountPkr: 3000,
-    description: "Balance top-up via bank transfer",
-    date: "2025-06-05T13:00:00Z",
+    type: "commission",
+    description: "Platform commission deducted",
+    amountPkr: 480,
+    date: "2025-05-25T17:00:00Z",
     status: "completed",
-    balanceAfterPkr: 2880,
+    taskTitle: "Move sofa + 2 beds to new flat",
+    reference: "TASK-3640",
   },
   {
     id: "tx-010",
-    type: "commission_deducted",
-    amountPkr: -240,
-    description: "Commission deducted on task completion",
-    taskTitle: "Help with NADRA form submission",
-    taskId: "task-090",
-    date: "2025-06-04T15:30:00Z",
-    status: "completed",
-    balanceAfterPkr: 2640,
-  },
-  {
-    id: "tx-011",
-    type: "commission_reserved",
-    amountPkr: -240,
-    description: "Commission hold on assignment",
-    taskTitle: "Help with NADRA form submission",
-    taskId: "task-090",
-    date: "2025-06-04T09:00:00Z",
-    status: "completed",
-    balanceAfterPkr: 2880,
-  },
-  {
-    id: "tx-012",
-    type: "top_up",
-    amountPkr: 1000,
+    type: "credit",
     description: "Balance top-up via JazzCash",
-    date: "2025-06-03T10:00:00Z",
+    amountPkr: 1000,
+    date: "2025-05-20T10:00:00Z",
     status: "completed",
-    balanceAfterPkr: 3120,
+    reference: "JC-2025-38820",
   },
 ];
 
-const CHART_DATA = [
-  { date: "Jun 1", balance: 800 },
-  { date: "Jun 2", balance: 1200 },
-  { date: "Jun 3", balance: 3120 },
-  { date: "Jun 4", balance: 2640 },
-  { date: "Jun 5", balance: 2880 },
-  { date: "Jun 6", balance: 2880 },
-  { date: "Jun 7", balance: -120 },
-  { date: "Jun 8", balance: 1200 },
-  { date: "Jun 9", balance: 840 },
-  { date: "Jun 10", balance: 3200 },
-];
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const TX_TYPE_FILTERS = [
-  { label: "All", value: "all" },
-  { label: "Top-ups", value: "top_up" },
-  { label: "Commission", value: "commission" },
-  { label: "Boosts", value: "boost_fee" },
-  { label: "Refunds", value: "refund" },
-];
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function txIcon(type: TxType) {
+function getTxIcon(type: TxType) {
   switch (type) {
-    case "top_up":
-      return <ArrowUpRight className="w-4 h-4" />;
-    case "commission_reserved":
-      return <Clock className="w-4 h-4" />;
-    case "commission_deducted":
-      return <ArrowDownRight className="w-4 h-4" />;
-    case "commission_released":
-      return <RefreshCw className="w-4 h-4" />;
-    case "boost_fee":
-      return <Zap className="w-4 h-4" />;
-    case "refund":
-      return <CheckCircle className="w-4 h-4" />;
+    case "credit":
+    case "release":
+      return { Icon: ArrowUpCircle, color: "text-emerald-500", bg: "bg-emerald-50" };
+    case "debit":
+    case "commission":
+      return { Icon: ArrowDownCircle, color: "text-red-500", bg: "bg-red-50" };
+    case "reservation":
+      return { Icon: Lock, color: "text-amber-500", bg: "bg-amber-50" };
     default:
-      return <ArrowUpRight className="w-4 h-4" />;
+      return { Icon: RefreshCw, color: "text-gray-400", bg: "bg-gray-50" };
   }
 }
 
-function txColor(type: TxType): string {
+function getTxAmountPrefix(type: TxType): string {
   switch (type) {
-    case "top_up":
-    case "commission_released":
-    case "refund":
-      return "text-emerald-600 bg-emerald-50 border-emerald-100";
-    case "commission_reserved":
-      return "text-amber-600 bg-amber-50 border-amber-100";
-    case "commission_deducted":
-    case "boost_fee":
-      return "text-red-500 bg-red-50 border-red-100";
+    case "credit":
+    case "release":
+      return "+";
+    case "debit":
+    case "commission":
+      return "-";
+    case "reservation":
+      return "−";
     default:
-      return "text-slate-500 bg-slate-50 border-slate-100";
+      return "";
   }
 }
 
-function txLabel(type: TxType): string {
+function getTxAmountColor(type: TxType): string {
   switch (type) {
-    case "top_up":
-      return "Top-up";
-    case "commission_reserved":
-      return "Hold";
-    case "commission_deducted":
-      return "Commission";
-    case "commission_released":
-      return "Released";
-    case "boost_fee":
-      return "Boost";
-    case "refund":
-      return "Refund";
+    case "credit":
+    case "release":
+      return "text-emerald-600";
+    case "debit":
+    case "commission":
+      return "text-red-600";
+    case "reservation":
+      return "text-amber-600";
     default:
-      return "Transaction";
+      return "text-[var(--foreground)]";
   }
 }
 
-function isCredit(type: TxType): boolean {
-  return type === "top_up" || type === "commission_released" || type === "refund";
+function getStatusBadge(status: TxStatus) {
+  switch (status) {
+    case "completed":
+      return { label: "Completed", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+    case "pending":
+      return { label: "Pending", cls: "bg-amber-50 text-amber-700 border-amber-200" };
+    case "failed":
+      return { label: "Failed", cls: "bg-red-50 text-red-700 border-red-200" };
+    case "reversed":
+      return { label: "Reversed", cls: "bg-blue-50 text-blue-700 border-blue-200" };
+    default:
+      return { label: status, cls: "bg-gray-50 text-gray-600 border-gray-200" };
+  }
 }
 
 function formatDate(iso: string): string {
@@ -270,288 +208,312 @@ function formatTime(iso: string): string {
   return d.toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" });
 }
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
+const TX_TYPE_FILTERS: { key: TxType | "all"; label: string }[] = [
+  { key: "all", label: "Sab" },
+  { key: "credit", label: "Credit" },
+  { key: "debit", label: "Debit" },
+  { key: "commission", label: "Commission" },
+  { key: "reservation", label: "Reserved" },
+  { key: "release", label: "Released" },
+];
 
-function StatCard({
-  icon,
-  label,
-  value,
-  sub,
-  accent,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  sub?: string;
-  accent?: string;
-}) {
-  return (
-    <motion.div
-      whileHover={{ y: -2, boxShadow: "0 8px 32px -8px rgba(0,0,0,0.12)" }}
-      transition={{ duration: 0.2 }}
-      className="bg-white rounded-2xl border border-black/5 p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_16px_-4px_rgba(0,0,0,0.08)] flex flex-col gap-3"
-    >
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${accent ?? "bg-[var(--brand-primary)]/10 text-[var(--brand-primary)]"}`}>
-        {icon}
-      </div>
-      <div>
-        <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">{label}</p>
-        <p className="text-2xl font-bold text-slate-900 mt-0.5 tracking-tight">{value}</p>
-        {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
-      </div>
-    </motion.div>
-  );
-}
-
-interface TooltipPayload {
-  value: number;
-}
-
-function CustomTooltip({
-  active,
-  payload,
-  label,
-}: {
-  active?: boolean;
-  payload?: TooltipPayload[];
-  label?: string;
-}) {
-  if (!active || !payload?.length) return null;
-  const val = payload[0].value;
-  return (
-    <div className="bg-white border border-black/5 rounded-xl shadow-lg px-4 py-3 text-sm">
-      <p className="text-slate-500 text-xs mb-1">{label}</p>
-      <p className={`font-bold ${val >= 0 ? "text-emerald-600" : "text-red-500"}`}>
-        {pkr(val)}
-      </p>
-    </div>
-  );
-}
-
-// ─── Main page ───────────────────────────────────────────────────────────────
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function TaskerBalancePage() {
-  const [filter, setFilter] = useState<string>("all");
-  const [showInfo, setShowInfo] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<TxType | "all">("all");
+  const [showAll, setShowAll] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const availablePkr = MOCK_BALANCE.totalPkr - MOCK_BALANCE.reservedPkr;
 
-  const currentBalance = 3200;
-  const reservedBalance = 360;
-  const availableBalance = currentBalance - reservedBalance;
+  const filtered = useMemo(() => {
+    const list =
+      activeFilter === "all"
+        ? MOCK_TRANSACTIONS
+        : MOCK_TRANSACTIONS.filter((tx) => tx.type === activeFilter);
+    return showAll ? list : list.slice(0, 6);
+  }, [activeFilter, showAll]);
 
-  const totalEarned = MOCK_TRANSACTIONS.filter(
-    (t) => t.type === "top_up"
-  ).reduce((s, t) => s + t.amountPkr, 0);
-
-  const totalCommission = MOCK_TRANSACTIONS.filter(
-    (t) => t.type === "commission_deducted"
-  ).reduce((s, t) => s + Math.abs(t.amountPkr), 0);
-
-  const filtered = MOCK_TRANSACTIONS.filter((tx) => {
-    if (filter === "all") return true;
-    if (filter === "commission")
-      return (
-        tx.type === "commission_reserved" ||
-        tx.type === "commission_deducted" ||
-        tx.type === "commission_released"
-      );
-    return tx.type === filter;
-  });
+  const totalFiltered = useMemo(
+    () =>
+      activeFilter === "all"
+        ? MOCK_TRANSACTIONS.length
+        : MOCK_TRANSACTIONS.filter((tx) => tx.type === activeFilter).length,
+    [activeFilter]
+  );
 
   return (
-    <main className="min-h-screen bg-[var(--background)] pb-20">
-      {/* ── Header ── */}
-      <Reveal>
-        <section className="bg-white border-b border-black/5 px-4 py-10 md:py-14">
-          <div className="max-w-5xl mx-auto">
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-              <div>
-                <div className="inline-flex items-center gap-2 bg-[var(--brand-primary)]/10 text-[var(--brand-primary)] text-xs font-semibold px-3 py-1 rounded-full mb-3">
-                  <Wallet className="w-3.5 h-3.5" />
-                  Tasker Wallet
+    <main className="min-h-screen bg-[var(--background)]">
+      {/* ── PAGE HEADER ── */}
+      <section
+        className="relative overflow-hidden"
+        style={{
+          background:
+            "linear-gradient(135deg, #0f3f63 0%, #1B6CA8 55%, #1e7fc0 100%)",
+        }}
+      >
+        {/* Decorative pattern */}
+        <div
+          className="absolute inset-0 opacity-[0.06]"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 20% 50%, #F5A623 0%, transparent 45%), radial-gradient(circle at 80% 20%, #ffffff 0%, transparent 40%)",
+          }}
+          aria-hidden="true"
+        />
+        {/* Geometric accent */}
+        <div
+          className="absolute right-0 top-0 w-64 h-64 opacity-[0.05]"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 50%)",
+            backgroundSize: "12px 12px",
+          }}
+          aria-hidden="true"
+        />
+
+        <div className="container relative z-10 py-10 md:py-14">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center">
+                  <Wallet className="w-4 h-4 text-white" aria-hidden="true" />
                 </div>
-                <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight text-balance">
-                  Balance &amp; Transactions
-                </h1>
-                <p className="text-slate-500 mt-2 text-sm leading-relaxed">
-                  Track your prepaid balance, commission deductions, and full transaction history.
+                <span className="text-white/70 text-sm font-medium tracking-wide uppercase">
+                  Tasker Account
+                </span>
+              </div>
+              <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
+                Mera Balance
+              </h1>
+              <p
+                className="text-white/60 text-lg mt-0.5"
+                style={{ fontFamily: "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif" }}
+                dir="rtl"
+              >
+                میرا بیلنس
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/verification-status"
+                className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-3 py-2 rounded-lg border border-white/20 transition-colors"
+              >
+                <Shield className="w-4 h-4" aria-hidden="true" />
+                Verification
+              </Link>
+              <Link
+                href="/my-bids-tasker"
+                className="flex items-center gap-1.5 bg-[#1A1A2E] hover:bg-[#2d2d4e] text-white text-sm font-bold px-3 py-2 rounded-lg transition-colors"
+              >
+                <TrendingUp className="w-4 h-4" aria-hidden="true" />
+                My Bids
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="container py-6 md:py-10 space-y-6">
+        {/* ── BALANCE CARDS ── */}
+        <Reveal>
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+            className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+          >
+            {/* Total Balance — hero card */}
+            <motion.div
+              variants={scaleIn}
+              className="sm:col-span-3 relative overflow-hidden rounded-2xl p-6 md:p-8"
+              style={{
+                background:
+                  "linear-gradient(135deg, #1B6CA8 0%, #0f3f63 100%)",
+                boxShadow:
+                  "0 4px 6px rgba(27,108,168,0.15), 0 20px 40px -12px rgba(27,108,168,0.35)",
+              }}
+            >
+              {/* Decorative circle */}
+              <div
+                className="absolute -right-8 -top-8 w-40 h-40 rounded-full opacity-10"
+                style={{ background: "#F5A623" }}
+                aria-hidden="true"
+              />
+              <div
+                className="absolute -right-4 -bottom-12 w-56 h-56 rounded-full opacity-[0.06]"
+                style={{ background: "#ffffff" }}
+                aria-hidden="true"
+              />
+
+              <div className="relative z-10">
+                <p className="text-white/60 text-sm font-medium uppercase tracking-widest mb-1">
+                  Kul Balance
+                </p>
+                <p
+                  className="text-white/50 text-xs mb-3"
+                  style={{
+                    fontFamily:
+                      "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif",
+                  }}
+                  dir="rtl"
+                >
+                  کل بیلنس
+                </p>
+                <div className="flex items-end gap-3 mb-6">
+                  <span className="text-4xl md:text-5xl font-bold text-white tracking-tight">
+                    {formatPKR(MOCK_BALANCE.totalPkr)}
+                  </span>
+                  <span className="text-white/50 text-sm mb-1.5">PKR</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Available */}
+                  <div className="bg-white/10 rounded-xl p-4 border border-white/10">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <CheckCircle className="w-3.5 h-3.5 text-emerald-300" aria-hidden="true" />
+                      <span className="text-white/60 text-xs font-medium uppercase tracking-wide">
+                        Dastiyab
+                      </span>
+                    </div>
+                    <p
+                      className="text-white/40 text-xs mb-2"
+                      style={{
+                        fontFamily:
+                          "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif",
+                      }}
+                      dir="rtl"
+                    >
+                      دستیاب
+                    </p>
+                    <p className="text-2xl font-bold text-emerald-300">
+                      {formatPKR(availablePkr)}
+                    </p>
+                  </div>
+
+                  {/* Reserved */}
+                  <div className="bg-white/10 rounded-xl p-4 border border-white/10">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Lock className="w-3.5 h-3.5 text-amber-300" aria-hidden="true" />
+                      <span className="text-white/60 text-xs font-medium uppercase tracking-wide">
+                        Commission Reserved
+                      </span>
+                    </div>
+                    <p
+                      className="text-white/40 text-xs mb-2"
+                      style={{
+                        fontFamily:
+                          "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif",
+                      }}
+                      dir="rtl"
+                    >
+                      محفوظ کمیشن
+                    </p>
+                    <p className="text-2xl font-bold text-amber-300">
+                      {formatPKR(MOCK_BALANCE.reservedPkr)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        </Reveal>
+
+        {/* ── QUICK ACTIONS ── */}
+        <Reveal delay={0.05}>
+          <div className="card p-5">
+            <h2 className="text-sm font-semibold text-[var(--muted-foreground)] uppercase tracking-wide mb-4">
+              Quick Actions
+            </h2>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                className="btn-primary flex-1 gap-2"
+                onClick={() => alert("Payment integration coming soon. Yeh feature jald aa raha hai!")}
+              >
+                <Plus className="w-4 h-4" aria-hidden="true" />
+                Paisa Daalo (Add Funds)
+              </button>
+              <button
+                className="btn-secondary flex-1 gap-2"
+                onClick={() => alert("Withdrawal feature coming soon. Jald aa raha hai!")}
+              >
+                <Minus className="w-4 h-4" aria-hidden="true" />
+                Nikalo (Withdraw)
+              </button>
+            </div>
+            <div             className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
+              <Info className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
+              <p className="text-amber-700 text-xs leading-relaxed">
+                <strong>Mock balance</strong> — payment integration coming soon. Abhi yeh sirf demo hai.
+              </p>
+            </div>
+          </div>
+        </Reveal>
+
+        {/* ── COMMISSION INFO ── */}
+        <Reveal delay={0.08}>
+          <div
+            className="rounded-xl p-4 border flex items-start gap-3"
+            style={{
+              background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)",
+              borderColor: "#bfdbfe",
+            }}
+          >
+            <div className="w-9 h-9 rounded-lg bg-[var(--primary)] flex items-center justify-center flex-shrink-0">
+              <Info className="w-4 h-4 text-white" aria-hidden="true" />
+            </div>
+            <div>
+              <p className="text-[var(--primary)] font-semibold text-sm">
+                Platform Commission: {COMMISSION_RATE_PCT}%
+              </p>
+              <p className="text-blue-700 text-xs mt-0.5 leading-relaxed">
+                Platform sirf successfully complete hone wale tasks par{" "}
+                <strong>{COMMISSION_RATE_PCT}%</strong> commission leta hai. Commission tabhi kata
+                jata hai jab kaam mukammal ho jaye. Minimum balance requirement:{" "}
+                <strong>{formatPKR(MIN_BALANCE_PKR)}</strong>.
+              </p>
+            </div>
+          </div>
+        </Reveal>
+
+        {/* ── TRANSACTION HISTORY ── */}
+        <Reveal delay={0.1}>
+          <div className="card overflow-hidden">
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-[var(--border)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h2 className="section-heading">Lain-Den ka Hisaab</h2>
+                <p
+                  className="text-[var(--muted-foreground)] text-xs mt-0.5"
+                  style={{
+                    fontFamily:
+                      "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif",
+                  }}
+                  dir="rtl"
+                >
+                  لین دین کا حساب
                 </p>
               </div>
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                className="inline-flex items-center gap-2 bg-[var(--brand-primary)] text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.12)] hover:opacity-90 transition-opacity self-start sm:self-auto"
-              >
-                <ArrowUpRight className="w-4 h-4" />
-                Top Up Balance
-              </motion.button>
+              <span className="text-xs text-[var(--muted-foreground)] bg-[var(--background)] px-2.5 py-1 rounded-full border border-[var(--border)]">
+                {totalFiltered} transactions
+              </span>
             </div>
-          </div>
-        </section>
-      </Reveal>
 
-      <div className="max-w-5xl mx-auto px-4 mt-8 space-y-8">
-        {/* ── Balance cards ── */}
-        <Reveal>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard
-              icon={<Wallet className="w-5 h-5" />}
-              label="Current Balance"
-              value={pkr(currentBalance)}
-              sub={`Min. required: ${pkr(BALANCE_MINIMUM)}`}
-              accent="bg-[var(--brand-primary)]/10 text-[var(--brand-primary)]"
-            />
-            <StatCard
-              icon={<Shield className="w-5 h-5" />}
-              label="Reserved (On Hold)"
-              value={pkr(reservedBalance)}
-              sub="Held for active task"
-              accent="bg-amber-50 text-amber-600"
-            />
-            <StatCard
-              icon={<CheckCircle className="w-5 h-5" />}
-              label="Available"
-              value={pkr(availableBalance)}
-              sub="Free to use for bids"
-              accent="bg-emerald-50 text-emerald-600"
-            />
-            <StatCard
-              icon={<TrendingDown className="w-5 h-5" />}
-              label="Total Commission Paid"
-              value={pkr(totalCommission)}
-              sub={`${COMMISSION_RATE_PCT}% per completed task`}
-              accent="bg-red-50 text-red-500"
-            />
-          </div>
-        </Reveal>
-
-        {/* ── Commission explainer ── */}
-        <Reveal>
-          <div className="bg-slate-50 border border-black/5 rounded-2xl p-5">
-            <button
-              onClick={() => setShowInfo((v) => !v)}
-              className="w-full flex items-center justify-between text-left"
-            >
-              <div className="flex items-center gap-2 text-slate-700 font-semibold text-sm">
-                <Info className="w-4 h-4 text-[var(--brand-primary)]" />
-                How does the commission &amp; balance system work?
-              </div>
-              <ChevronDown
-                className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${showInfo ? "rotate-180" : ""}`}
-              />
-            </button>
-            {showInfo && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.25 }}
-                className="mt-4 grid sm:grid-cols-3 gap-4 text-sm text-slate-600"
-              >
-                <div className="bg-white rounded-xl p-4 border border-black/5">
-                  <p className="font-semibold text-slate-800 mb-1 flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-full bg-[var(--brand-primary)]/10 text-[var(--brand-primary)] text-xs flex items-center justify-center font-bold">1</span>
-                    Maintain Balance
-                  </p>
-                  <p className="leading-relaxed text-xs">
-                    Keep at least {pkr(BALANCE_MINIMUM)} in your wallet to place bids. Without sufficient balance, you cannot be assigned tasks.
-                  </p>
-                </div>
-                <div className="bg-white rounded-xl p-4 border border-black/5">
-                  <p className="font-semibold text-slate-800 mb-1 flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-full bg-[var(--brand-primary)]/10 text-[var(--brand-primary)] text-xs flex items-center justify-center font-bold">2</span>
-                    Commission Hold
-                  </p>
-                  <p className="leading-relaxed text-xs">
-                    When assigned a task, {COMMISSION_RATE_PCT}% of your bid amount is reserved from your balance. This prevents overbidding beyond your capacity.
-                  </p>
-                </div>
-                <div className="bg-white rounded-xl p-4 border border-black/5">
-                  <p className="font-semibold text-slate-800 mb-1 flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-full bg-[var(--brand-primary)]/10 text-[var(--brand-primary)] text-xs flex items-center justify-center font-bold">3</span>
-                    Deduction on Completion
-                  </p>
-                  <p className="leading-relaxed text-xs">
-                    Once the poster marks the task complete, the held commission is permanently deducted. If cancelled, it is released back to your balance.
-                  </p>
-                </div>
-              </motion.div>
-            )}
-          </div>
-        </Reveal>
-
-        {/* ── Balance chart ── */}
-        <Reveal>
-          <div className="bg-white rounded-2xl border border-black/5 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_16px_-4px_rgba(0,0,0,0.08)] p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-base font-bold text-slate-900">Balance Over Time</h2>
-                <p className="text-xs text-slate-400 mt-0.5">Last 10 days</p>
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full font-medium">
-                <TrendingUp className="w-3.5 h-3.5" />
-                +{pkr(2400)} this week
-              </div>
-            </div>
-            {mounted && (
-              <ResponsiveContainer width="100%" height={200}>
-                <AreaChart data={CHART_DATA} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="balGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--brand-primary)" stopOpacity={0.18} />
-                      <stop offset="95%" stopColor="var(--brand-primary)" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fontSize: 11, fill: "#94a3b8" }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 11, fill: "#94a3b8" }}
-                    axisLine={false}
-                    tickLine={false}
-                    tickFormatter={(v: number) => `${v >= 0 ? "" : "-"}${Math.abs(v / 1000).toFixed(1)}k`}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Area
-                    type="monotone"
-                    dataKey="balance"
-                    stroke="var(--brand-primary)"
-                    strokeWidth={2}
-                    fill="url(#balGrad)"
-                    dot={false}
-                    activeDot={{ r: 5, fill: "var(--brand-primary)", strokeWidth: 0 }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </Reveal>
-
-        {/* ── Transaction list ── */}
-        <Reveal>
-          <div className="bg-white rounded-2xl border border-black/5 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_16px_-4px_rgba(0,0,0,0.08)] overflow-hidden">
-            {/* Header + filters */}
-            <div className="px-6 py-5 border-b border-black/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <h2 className="text-base font-bold text-slate-900">Transaction History</h2>
-              <div className="flex items-center gap-2 flex-wrap">
-                <Filter className="w-3.5 h-3.5 text-slate-400" />
+            {/* Filter tabs */}
+            <div className="px-5 py-3 border-b border-[var(--border)] overflow-x-auto">
+              <div className="flex gap-2 min-w-max">
                 {TX_TYPE_FILTERS.map((f) => (
                   <button
-                    key={f.value}
-                    onClick={() => setFilter(f.value)}
-                    className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-all duration-150 ${
-                      filter === f.value
-                        ? "bg-[var(--brand-primary)] text-white border-[var(--brand-primary)]"
-                        : "bg-white text-slate-500 border-slate-200 hover:border-[var(--brand-primary)]/40"
-                    }`}
+                    key={f.key}
+                    onClick={() => {
+                      setActiveFilter(f.key);
+                      setShowAll(false);
+                    }}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 whitespace-nowrap",
+                      activeFilter === f.key
+                        ? "bg-[var(--primary)] text-white border-[var(--primary)]"
+                        : "bg-white text-[var(--muted-foreground)] border-[var(--border)] hover:border-[var(--primary)] hover:text-[var(--primary)]"
+                    )}
                   >
                     {f.label}
                   </button>
@@ -559,131 +521,148 @@ export default function TaskerBalancePage() {
               </div>
             </div>
 
-            {/* Rows */}
+            {/* Transaction list */}
             <motion.ul
               variants={staggerContainer}
               initial="hidden"
               animate="visible"
-              className="divide-y divide-black/5"
+              className="divide-y divide-[var(--border)]"
             >
-              {filtered.length === 0 && (
-                <li className="px-6 py-12 text-center text-slate-400 text-sm">
-                  No transactions found for this filter.
+              {filtered.length === 0 ? (
+                <li className="px-5 py-10 text-center text-[var(--muted-foreground)] text-sm">
+                  Koi transaction nahi mili.
                 </li>
-              )}
-              {filtered.map((tx) => (
-                <motion.li
-                  key={tx.id}
-                  variants={fadeInUp}
-                  className="px-6 py-4 flex items-start gap-4 hover:bg-slate-50/60 transition-colors duration-150"
-                >
-                  {/* Icon */}
-                  <div
-                    className={`mt-0.5 w-9 h-9 rounded-xl flex items-center justify-center border flex-shrink-0 ${txColor(tx.type)}`}
-                  >
-                    {txIcon(tx.type)}
-                  </div>
+              ) : (
+                filtered.map((tx) => {
+                  const { Icon, color, bg } = getTxIcon(tx.type);
+                  const prefix = getTxAmountPrefix(tx.type);
+                  const amtColor = getTxAmountColor(tx.type);
+                  const { label: statusLabel, cls: statusCls } = getStatusBadge(tx.status);
 
-                  {/* Details */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-800 truncate">
-                          {tx.description}
-                        </p>
-                        {tx.taskTitle && (
-                          <p className="text-xs text-slate-400 mt-0.5 truncate">
-                            Task: {tx.taskTitle}
-                          </p>
+                  return (
+                    <motion.li
+                      key={tx.id}
+                      variants={fadeInUp}
+                      className="px-5 py-4 flex items-start gap-4 hover:bg-[var(--background)] transition-colors"
+                    >
+                      {/* Icon */}
+                      <div
+                        className={cn(
+                          "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5",
+                          bg
                         )}
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          {mounted ? `${formatDate(tx.date)} at ${formatTime(tx.date)}` : "—"}
-                        </p>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p
-                          className={`text-sm font-bold ${
-                            isCredit(tx.type) ? "text-emerald-600" : "text-red-500"
-                          }`}
-                        >
-                          {isCredit(tx.type) ? "+" : ""}
-                          {pkr(Math.abs(tx.amountPkr))}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          Bal: {pkr(tx.balanceAfterPkr)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="mt-2 flex items-center gap-2">
-                      <span
-                        className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${txColor(tx.type)}`}
                       >
-                        {txLabel(tx.type)}
-                      </span>
-                      {tx.status === "completed" && (
-                        <span className="inline-flex items-center gap-1 text-xs text-emerald-600">
-                          <CheckCircle className="w-3 h-3" />
-                          Settled
-                        </span>
-                      )}
-                      {tx.status === "pending" && (
-                        <span className="inline-flex items-center gap-1 text-xs text-amber-500">
-                          <Clock className="w-3 h-3" />
-                          Pending
-                        </span>
-                      )}
-                      {tx.status === "failed" && (
-                        <span className="inline-flex items-center gap-1 text-xs text-red-500">
-                          <AlertCircle className="w-3 h-3" />
-                          Failed
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </motion.li>
-              ))}
+                        <Icon className={cn("w-5 h-5", color)} aria-hidden="true" />
+                      </div>
+
+                      {/* Details */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-[var(--foreground)] leading-snug truncate">
+                              {tx.description}
+                            </p>
+                            {tx.taskTitle && (
+                              <p className="text-xs text-[var(--muted-foreground)] mt-0.5 truncate">
+                                Task: {tx.taskTitle}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                              <span className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
+                                <Clock className="w-3 h-3" aria-hidden="true" />
+                                {formatDate(tx.date)} · {formatTime(tx.date)}
+                              </span>
+                              {tx.reference && (
+                                <span className="text-xs text-[var(--muted-foreground)] font-mono">
+                                  #{tx.reference}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Amount + status */}
+                          <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                            <span
+                              className={cn(
+                                "text-sm font-bold tabular-nums",
+                                amtColor
+                              )}
+                            >
+                              {prefix}{formatPKR(tx.amountPkr)}
+                            </span>
+                            <span
+                              className={cn(
+                                "text-xs font-semibold px-2 py-0.5 rounded-full border",
+                                statusCls
+                              )}
+                            >
+                              {statusLabel}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.li>
+                  );
+                })
+              )}
             </motion.ul>
 
-            {/* Footer summary */}
-            <div className="px-6 py-4 bg-slate-50 border-t border-black/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-500">
-              <span>{filtered.length} transaction{filtered.length !== 1 ? "s" : ""} shown</span>
-              <span>
-                Commission rate: <strong className="text-slate-700">{COMMISSION_RATE_PCT}%</strong> of bid amount per completed task
-              </span>
-            </div>
+            {/* Show more */}
+            {totalFiltered > 6 && !showAll && (
+              <div className="px-5 py-4 border-t border-[var(--border)]">
+                <button
+                  onClick={() => setShowAll(true)}
+                  className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-[var(--primary)] hover:text-[var(--primary-hover)] transition-colors py-1"
+                >
+                  <ChevronDown className="w-4 h-4" aria-hidden="true" />
+                  Aur Dekhein ({totalFiltered - 6} aur)
+                </button>
+              </div>
+            )}
           </div>
         </Reveal>
 
-        {/* ── Top-up CTA ── */}
-        <Reveal>
-          <div className="rounded-2xl bg-[var(--brand-primary)] p-6 md:p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-5">
-            <div>
-              <h2 className="text-lg font-bold text-white tracking-tight">
-                Keep your balance topped up
-              </h2>
-              <p className="text-white/80 text-sm mt-1 leading-relaxed max-w-md">
-                A healthy balance means you can bid on more tasks without interruption. Top up via JazzCash, EasyPaisa, or bank transfer.
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                className="inline-flex items-center justify-center gap-2 bg-white text-[var(--brand-primary)] text-sm font-bold px-6 py-3 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.12)] hover:bg-white/90 transition-colors"
-              >
-                <ArrowUpRight className="w-4 h-4" />
-                Top Up Now
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                className="inline-flex items-center justify-center gap-2 bg-white/15 text-white text-sm font-semibold px-6 py-3 rounded-xl border border-white/20 hover:bg-white/20 transition-colors"
-              >
-                View Payment Methods
-              </motion.button>
-            </div>
+        {/* ── BALANCE TIPS ── */}
+        <Reveal delay={0.12}>
+          <div className="card p-5">
+            <h2 className="text-sm font-semibold text-[var(--foreground)] mb-4 flex items-center gap-2">
+              <Shield className="w-4 h-4 text-[var(--primary)]" aria-hidden="true" />
+              Balance ke Baare Mein Zaroori Baatein
+            </h2>
+            <ul className="space-y-3">
+              {[
+                {
+                  icon: CheckCircle,
+                  color: "text-emerald-500",
+                  text: `Bidding ke liye minimum ${formatPKR(MIN_BALANCE_PKR)} balance zaroori hai.`,
+                },
+                {
+                  icon: Lock,
+                  color: "text-amber-500",
+                  text: `Jab aap kisi task par assign ho jaate hain, commission (${COMMISSION_RATE_PCT}%) reserve ho jata hai.`,
+                },
+                {
+                  icon: AlertCircle,
+                  color: "text-blue-500",
+                  text: "Task complete hone par commission kaat liya jata hai. Cancel hone par wapas aa jata hai.",
+                },
+                {
+                  icon: TrendingUp,
+                  color: "text-[var(--primary)]",
+                  text: "Zyada balance rakhne se zyada tasks par bid kar sakte hain aur jaldi assign ho sakte hain.",
+                },
+              ].map(({ icon: Icon, color, text }, i) => (
+                <li key={i} className="flex items-start gap-3">
+                  <Icon className={cn("w-4 h-4 flex-shrink-0 mt-0.5", color)} aria-hidden="true" />
+                  <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">{text}</p>
+                </li>
+              ))}
+            </ul>
           </div>
         </Reveal>
+
+        {/* ── BOTTOM SPACER ── */}
+        <div className="h-4" />
       </div>
     </main>
   );

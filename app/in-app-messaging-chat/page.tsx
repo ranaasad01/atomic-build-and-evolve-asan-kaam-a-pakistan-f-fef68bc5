@@ -1,24 +1,22 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Search, Shield, AlertCircle, CheckCheck, Check, Clock, ChevronRight, Star, MapPin, Lock, Info, X, Phone } from 'lucide-react';
-import { Reveal } from "@/components/Reveal";
-import { fadeInUp, staggerContainer } from "@/lib/motion";
-import { APP_NAME, VerificationStatus } from "@/lib/data";
-type getVerificationColor = any;
-const getVerificationColor: any = [];
-type getVerificationLabel = any;
-const getVerificationLabel: any = [];
+import Link from "next/link";
+import { Send, Shield, AlertTriangle, ChevronLeft, Search, MoreVertical, CheckCheck, Check, Phone, Flag, Star, MapPin, Clock, Paperclip, Smile } from 'lucide-react';
+import { cn } from "@/lib/utils";
+import { formatPKR, VerificationStatus } from "@/lib/data";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-interface LocalChatMessage {
+type MessageStatus = "sent" | "delivered" | "read";
+
+interface Message {
   id: string;
   senderId: string;
   text: string;
-  sentAt: string;
-  isRead: boolean;
+  timestamp: string;
+  status: MessageStatus;
   isRedacted?: boolean;
   redactedReason?: string;
 }
@@ -28,347 +26,263 @@ interface Conversation {
   taskId: string;
   taskTitle: string;
   taskBudgetPkr: number;
-  otherUserId: string;
-  otherUserName: string;
-  otherUserRole: "poster" | "tasker";
-  otherUserVerification: VerificationStatus;
-  otherUserRating: number;
+  taskArea: string;
+  otherPartyId: string;
+  otherPartyName: string;
+  otherPartyInitials: string;
+  otherPartyVerification: VerificationStatus;
+  otherPartyRating: number;
   lastMessage: string;
-  lastMessageAt: string;
+  lastMessageTime: string;
   unreadCount: number;
-  taskStatus: string;
-  messages: LocalChatMessage[];
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-const formatPkr = (amount: number) =>
-  `Rs ${amount.toLocaleString("en-PK")}`;
-
-const formatTime = (iso: string) => {
-  const d = new Date(iso);
-  return d.toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit", hour12: true });
-};
-
-const formatDate = (iso: string) => {
-  const d = new Date(iso);
-  const now = new Date();
-  const diff = now.getTime() - d.getTime();
-  const days = Math.floor(diff / 86400000);
-  if (days === 0) return "Today";
-  if (days === 1) return "Yesterday";
-  return d.toLocaleDateString("en-PK", { day: "numeric", month: "short" });
-};
-
-// Contact-info redaction patterns
-const REDACT_PATTERNS = [
-  { pattern: /(\+92|0092|03)\d{9,10}/g, reason: "phone number" },
-  { pattern: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, reason: "email address" },
-  { pattern: /https?:\/\/[^\s]+/g, reason: "external link" },
-  { pattern: /wa\.me\/[^\s]+/gi, reason: "WhatsApp link" },
-  { pattern: /@[a-zA-Z0-9_.]+/g, reason: "social handle" },
-  {
-    pattern: /\b(zero|one|two|three|four|five|six|seven|eight|nine)\s*(zero|one|two|three|four|five|six|seven|eight|nine)/gi,
-    reason: "number evasion",
-  },
-];
-
-function redactMessage(text: string): { text: string; wasRedacted: boolean; reason?: string } {
-  let result = text;
-  let wasRedacted = false;
-  let reason: string | undefined;
-  for (const { pattern, reason: r } of REDACT_PATTERNS) {
-    if (pattern.test(result)) {
-      result = result.replace(pattern, "[redacted]");
-      wasRedacted = true;
-      reason = r;
-    }
-    pattern.lastIndex = 0;
-  }
-  return { text: result, wasRedacted, reason };
+  messages: Message[];
 }
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 
-const CURRENT_USER_ID = "user_poster_1";
+const CURRENT_USER_ID = "me";
 
 const MOCK_CONVERSATIONS: Conversation[] = [
   {
-    id: "conv_1",
-    taskId: "task_001",
-    taskTitle: "Grocery pickup from Imtiaz, DHA Phase 6",
-    taskBudgetPkr: 800,
-    otherUserId: "tasker_ali",
-    otherUserName: "Ali Hassan",
-    otherUserRole: "tasker",
-    otherUserVerification: "verified",
-    otherUserRating: 4.8,
-    lastMessage: "I can be there by 11 AM, shall I confirm?",
-    lastMessageAt: new Date(Date.now() - 5 * 60000).toISOString(),
+    id: "conv-1",
+    taskId: "task-001",
+    taskTitle: "Furniture move DHA to Gulshan",
+    taskBudgetPkr: 3500,
+    taskArea: "DHA Phase 5, Karachi",
+    otherPartyId: "tasker-001",
+    otherPartyName: "Muhammad Bilal",
+    otherPartyInitials: "MB",
+    otherPartyVerification: "verified",
+    otherPartyRating: 4.8,
+    lastMessage: "I can be there by 9 AM, inshallah.",
+    lastMessageTime: "10:42 AM",
     unreadCount: 2,
-    taskStatus: "bid_received",
     messages: [
       {
         id: "m1",
-        senderId: "tasker_ali",
-        text: "Assalam o Alaikum! I saw your task for grocery pickup. I live nearby in DHA Phase 5.",
-        sentAt: new Date(Date.now() - 35 * 60000).toISOString(),
-        isRead: true,
+        senderId: "tasker-001",
+        text: "Assalam o Alaikum! I saw your task for furniture moving. I have experience with this kind of work.",
+        timestamp: "10:30 AM",
+        status: "read",
       },
       {
         id: "m2",
         senderId: CURRENT_USER_ID,
-        text: "Walaikum Assalam! Yes, I need someone to pick up a list of items from Imtiaz. The list is about 15-20 items.",
-        sentAt: new Date(Date.now() - 30 * 60000).toISOString(),
-        isRead: true,
+        text: "Walaikum Assalam! Yes, I need 2 helpers for moving a sofa, bed frame, and wardrobe.",
+        timestamp: "10:33 AM",
+        status: "read",
       },
       {
         id: "m3",
-        senderId: "tasker_ali",
-        text: "No problem at all. I have a bike so delivery will be quick. My bid is Rs 750 including transport.",
-        sentAt: new Date(Date.now() - 25 * 60000).toISOString(),
-        isRead: true,
+        senderId: "tasker-001",
+        text: "No problem. I will bring a helper. We can finish in 3 to 4 hours easily.",
+        timestamp: "10:35 AM",
+        status: "read",
       },
       {
         id: "m4",
         senderId: CURRENT_USER_ID,
-        text: "That sounds good. Can you do it before noon?",
-        sentAt: new Date(Date.now() - 20 * 60000).toISOString(),
-        isRead: true,
+        text: "Great. What time can you come on Saturday?",
+        timestamp: "10:38 AM",
+        status: "read",
       },
       {
         id: "m5",
-        senderId: "tasker_ali",
-        text: "I can be there by 11 AM, shall I confirm?",
-        sentAt: new Date(Date.now() - 5 * 60000).toISOString(),
-        isRead: false,
+        senderId: "tasker-001",
+        text: "My number is 0312-XXXXXXX, call me directly.",
+        timestamp: "10:40 AM",
+        status: "read",
+        isRedacted: true,
+        redactedReason: "Phone number removed for your safety. Please use in-app messaging.",
       },
-    ],
-  },
-  {
-    id: "conv_2",
-    taskId: "task_002",
-    taskTitle: "Fix leaking kitchen tap — Gulshan-e-Iqbal",
-    taskBudgetPkr: 1500,
-    otherUserId: "tasker_kamran",
-    otherUserName: "Kamran Plumber",
-    otherUserRole: "tasker",
-    otherUserVerification: "verified",
-    otherUserRating: 4.6,
-    lastMessage: "Parts will cost extra, around Rs 300-400 depending on tap model.",
-    lastMessageAt: new Date(Date.now() - 2 * 3600000).toISOString(),
-    unreadCount: 0,
-    taskStatus: "assigned",
-    messages: [
       {
         id: "m6",
-        senderId: "tasker_kamran",
-        text: "Salam! I am an experienced plumber with 8 years of work. I can fix your tap today.",
-        sentAt: new Date(Date.now() - 5 * 3600000).toISOString(),
-        isRead: true,
-      },
-      {
-        id: "m7",
-        senderId: CURRENT_USER_ID,
-        text: "Great, what time can you come? I am available after 2 PM.",
-        sentAt: new Date(Date.now() - 4 * 3600000).toISOString(),
-        isRead: true,
-      },
-      {
-        id: "m8",
-        senderId: "tasker_kamran",
-        text: "Parts will cost extra, around Rs 300-400 depending on tap model.",
-        sentAt: new Date(Date.now() - 2 * 3600000).toISOString(),
-        isRead: true,
+        senderId: "tasker-001",
+        text: "I can be there by 9 AM, inshallah.",
+        timestamp: "10:42 AM",
+        status: "delivered",
       },
     ],
   },
   {
-    id: "conv_3",
-    taskId: "task_003",
-    taskTitle: "Help setting up new laptop and install software",
-    taskBudgetPkr: 2000,
-    otherUserId: "tasker_sara",
-    otherUserName: "Sara Tech",
-    otherUserRole: "tasker",
-    otherUserVerification: "submitted",
-    otherUserRating: 4.3,
-    lastMessage: "Which software do you need installed? Office, antivirus?",
-    lastMessageAt: new Date(Date.now() - 1 * 86400000).toISOString(),
-    unreadCount: 1,
-    taskStatus: "open",
-    messages: [
-      {
-        id: "m9",
-        senderId: "tasker_sara",
-        text: "Hi! I can help with laptop setup. I have experience with Windows 10 and 11.",
-        sentAt: new Date(Date.now() - 1 * 86400000 - 3600000).toISOString(),
-        isRead: true,
-      },
-      {
-        id: "m10",
-        senderId: CURRENT_USER_ID,
-        text: "Perfect. I need full setup including drivers and some software.",
-        sentAt: new Date(Date.now() - 1 * 86400000 - 1800000).toISOString(),
-        isRead: true,
-      },
-      {
-        id: "m11",
-        senderId: "tasker_sara",
-        text: "Which software do you need installed? Office, antivirus?",
-        sentAt: new Date(Date.now() - 1 * 86400000).toISOString(),
-        isRead: false,
-      },
-    ],
-  },
-  {
-    id: "conv_4",
-    taskId: "task_004",
-    taskTitle: "Stand in queue at NADRA office — F-8 Islamabad",
+    id: "conv-2",
+    taskId: "task-002",
+    taskTitle: "Grocery run from Imtiaz Store",
     taskBudgetPkr: 600,
-    otherUserId: "tasker_bilal",
-    otherUserName: "Bilal Qureshi",
-    otherUserRole: "tasker",
-    otherUserVerification: "unverified",
-    otherUserRating: 0,
-    lastMessage: "I am available tomorrow morning from 8 AM.",
-    lastMessageAt: new Date(Date.now() - 2 * 86400000).toISOString(),
+    taskArea: "Gulshan-e-Iqbal, Karachi",
+    otherPartyId: "tasker-002",
+    otherPartyName: "Ali Hassan",
+    otherPartyInitials: "AH",
+    otherPartyVerification: "verified",
+    otherPartyRating: 4.5,
+    lastMessage: "List mil gayi, main nikal raha hoon.",
+    lastMessageTime: "Yesterday",
     unreadCount: 0,
-    taskStatus: "open",
     messages: [
       {
-        id: "m12",
-        senderId: "tasker_bilal",
-        text: "I am available tomorrow morning from 8 AM.",
-        sentAt: new Date(Date.now() - 2 * 86400000).toISOString(),
-        isRead: true,
+        id: "m1",
+        senderId: "tasker-002",
+        text: "Assalam o Alaikum! Grocery list share kar dein please.",
+        timestamp: "2:10 PM",
+        status: "read",
+      },
+      {
+        id: "m2",
+        senderId: CURRENT_USER_ID,
+        text: "List bhej di hai. Imtiaz Super Store, Gulshan branch se lena hai.",
+        timestamp: "2:15 PM",
+        status: "read",
+      },
+      {
+        id: "m3",
+        senderId: "tasker-002",
+        text: "List mil gayi, main nikal raha hoon.",
+        timestamp: "2:18 PM",
+        status: "read",
+      },
+    ],
+  },
+  {
+    id: "conv-3",
+    taskId: "task-003",
+    taskTitle: "NADRA queue standing F-8",
+    taskBudgetPkr: 800,
+    taskArea: "F-8, Islamabad",
+    otherPartyId: "poster-003",
+    otherPartyName: "Sana Mirza",
+    otherPartyInitials: "SM",
+    otherPartyVerification: "unverified",
+    otherPartyRating: 0,
+    lastMessage: "Token number kya mila?",
+    lastMessageTime: "Mon",
+    unreadCount: 1,
+    messages: [
+      {
+        id: "m1",
+        senderId: CURRENT_USER_ID,
+        text: "Main NADRA office pahunch gaya hoon. Queue mein hoon.",
+        timestamp: "8:05 AM",
+        status: "read",
+      },
+      {
+        id: "m2",
+        senderId: "poster-003",
+        text: "Token number kya mila?",
+        timestamp: "8:30 AM",
+        status: "delivered",
+      },
+    ],
+  },
+  {
+    id: "conv-4",
+    taskId: "task-004",
+    taskTitle: "Laptop cleanup and antivirus",
+    taskBudgetPkr: 1200,
+    taskArea: "Saddar, Rawalpindi",
+    otherPartyId: "tasker-004",
+    otherPartyName: "Usman Farooq",
+    otherPartyInitials: "UF",
+    otherPartyVerification: "submitted",
+    otherPartyRating: 4.2,
+    lastMessage: "Kaam ho gaya, please confirm karein.",
+    lastMessageTime: "Sun",
+    unreadCount: 0,
+    messages: [
+      {
+        id: "m1",
+        senderId: "tasker-004",
+        text: "Laptop ki cleaning aur antivirus install ho gayi. Sab theek hai.",
+        timestamp: "4:00 PM",
+        status: "read",
+      },
+      {
+        id: "m2",
+        senderId: "tasker-004",
+        text: "Kaam ho gaya, please confirm karein.",
+        timestamp: "4:05 PM",
+        status: "read",
       },
     ],
   },
 ];
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Contact info redaction ───────────────────────────────────────────────────
+
+const PHONE_PATTERNS = [
+  /\b0?3\d{2}[-\s]?\d{7}\b/g,
+  /\+92[-\s]?3\d{2}[-\s]?\d{7}\b/g,
+  /\b03\d{9}\b/g,
+];
+const EMAIL_PATTERN = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+const URL_PATTERN = /https?:\/\/[^\s]+|www\.[^\s]+/g;
+const SOCIAL_PATTERN =
+  /\b(whatsapp|instagram|facebook|twitter|telegram|snapchat|tiktok)\b/gi;
+
+function detectContactInfo(text: string): boolean {
+  return (
+    PHONE_PATTERNS.some((p) => p.test(text)) ||
+    EMAIL_PATTERN.test(text) ||
+    URL_PATTERN.test(text) ||
+    SOCIAL_PATTERN.test(text)
+  );
+}
+
+// ─── Helper components ────────────────────────────────────────────────────────
 
 function VerificationBadge({ status }: { status: VerificationStatus }) {
-  const color = getVerificationColor(status);
-  const label = getVerificationLabel(status);
+  if (status === "verified") {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
+        <Shield className="w-2.5 h-2.5" />
+        Verified
+      </span>
+    );
+  }
+  if (status === "submitted") {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
+        <Clock className="w-2.5 h-2.5" />
+        Pending
+      </span>
+    );
+  }
   return (
-    <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${color}`}
-    >
-      <Shield className="w-3 h-3" />
-      {label}
+    <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-gray-700 bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded-full">
+      Unverified
     </span>
   );
 }
 
-function StarRating({ rating }: { rating: number }) {
-  if (rating === 0) return <span className="text-xs text-[var(--muted-foreground)]">No reviews yet</span>;
-  return (
-    <span className="inline-flex items-center gap-1 text-xs text-amber-500 font-medium">
-      <Star className="w-3 h-3 fill-amber-400 stroke-amber-500" />
-      {rating.toFixed(1)}
-    </span>
-  );
+function MessageStatusIcon({ status }: { status: MessageStatus }) {
+  if (status === "read") return <CheckCheck className="w-3.5 h-3.5 text-[var(--accent)]" />;
+  if (status === "delivered") return <CheckCheck className="w-3.5 h-3.5 text-white/60" />;
+  return <Check className="w-3.5 h-3.5 text-white/60" />;
 }
 
-function RedactionNotice({ reason }: { reason?: string }) {
+function Avatar({
+  initials,
+  size = "md",
+  online = false,
+}: {
+  initials: string;
+  size?: "sm" | "md" | "lg";
+  online?: boolean;
+}) {
+  const sizeClass = size === "sm" ? "w-8 h-8 text-xs" : size === "lg" ? "w-12 h-12 text-base" : "w-10 h-10 text-sm";
   return (
-    <div className="flex items-center gap-1.5 mt-1 text-xs text-amber-600 dark:text-amber-400">
-      <Shield className="w-3 h-3 flex-shrink-0" />
-      <span>Contact info ({reason}) removed for your safety</span>
+    <div className="relative flex-shrink-0">
+      <div
+        className={cn(
+          sizeClass,
+          "rounded-full bg-gradient-to-br from-[var(--primary)] to-[#0f3f63] flex items-center justify-center font-bold text-white shadow-sm"
+        )}
+      >
+        {initials}
+      </div>
+      {online && (
+        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full" />
+      )}
     </div>
-  );
-}
-
-function MessageBubble({
-  msg,
-  isMine,
-}: {
-  msg: LocalChatMessage;
-  isMine: boolean;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, ease: "easeOut" }}
-      className={`flex ${isMine ? "justify-end" : "justify-start"} mb-3`}
-    >
-      <div className={`max-w-[75%] ${isMine ? "items-end" : "items-start"} flex flex-col`}>
-        <div
-          className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
-            isMine
-              ? "bg-[var(--brand-primary)] text-white rounded-br-sm"
-              : "bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] rounded-bl-sm"
-          } ${msg.isRedacted ? "opacity-80" : ""}`}
-        >
-          {msg.text}
-        </div>
-        {msg.isRedacted && <RedactionNotice reason={msg.redactedReason} />}
-        <div className={`flex items-center gap-1 mt-1 ${isMine ? "flex-row-reverse" : "flex-row"}`}>
-          <span className="text-[10px] text-[var(--muted-foreground)]">{formatTime(msg.sentAt)}</span>
-          {isMine && (
-            msg.isRead
-              ? <CheckCheck className="w-3 h-3 text-[var(--brand-primary)]" />
-              : <Check className="w-3 h-3 text-[var(--muted-foreground)]" />
-          )}
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-function ConversationItem({
-  conv,
-  isActive,
-  onClick,
-}: {
-  conv: Conversation;
-  isActive: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <motion.button
-      whileHover={{ x: 2 }}
-      whileTap={{ scale: 0.99 }}
-      onClick={onClick}
-      className={`w-full text-left px-4 py-3.5 border-b border-[var(--border)] transition-colors duration-150 ${
-        isActive
-          ? "bg-[var(--brand-primary)]/8 border-l-2 border-l-[var(--brand-primary)]"
-          : "hover:bg-[var(--muted)]/50"
-      }`}
-    >
-      <div className="flex items-start gap-3">
-        <div className="relative flex-shrink-0">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--brand-primary)]/30 to-[var(--brand-primary)]/10 flex items-center justify-center text-[var(--brand-primary)] font-bold text-sm border border-[var(--brand-primary)]/20">
-            {conv.otherUserName.charAt(0)}
-          </div>
-          {conv.otherUserVerification === "verified" && (
-            <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center">
-              <Shield className="w-2.5 h-2.5 text-white" />
-            </div>
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-0.5">
-            <span className="font-semibold text-sm text-[var(--foreground)] truncate">{conv.otherUserName}</span>
-            <span className="text-[10px] text-[var(--muted-foreground)] flex-shrink-0 ml-2">
-              {formatDate(conv.lastMessageAt)}
-            </span>
-          </div>
-          <p className="text-xs text-[var(--muted-foreground)] truncate mb-1">{conv.taskTitle}</p>
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-[var(--foreground)]/70 truncate flex-1">{conv.lastMessage}</p>
-            {conv.unreadCount > 0 && (
-              <span className="ml-2 flex-shrink-0 w-5 h-5 bg-[var(--brand-primary)] text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                {conv.unreadCount}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-    </motion.button>
   );
 }
 
@@ -376,65 +290,69 @@ function ConversationItem({
 
 export default function InAppMessagingChatPage() {
   const [conversations, setConversations] = useState<Conversation[]>(MOCK_CONVERSATIONS);
-  const [activeConvId, setActiveConvId] = useState<string | null>(MOCK_CONVERSATIONS[0].id);
+  const [activeConvId, setActiveConvId] = useState<string | null>("conv-1");
   const [inputText, setInputText] = useState("");
+  const [showWarning, setShowWarning] = useState(false);
+  const [warningText, setWarningText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [showSafetyInfo, setShowSafetyInfo] = useState(false);
-  const [redactionWarning, setRedactionWarning] = useState<string | null>(null);
+  const [showMobileList, setShowMobileList] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const activeConv = conversations.find((c) => c.id === activeConvId) ?? null;
 
-  const filteredConvs = conversations.filter(
-    (c) =>
-      c.otherUserName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.taskTitle.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const totalUnread = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
-
+  // Auto-scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [activeConvId, activeConv?.messages.length]);
+  }, [activeConv?.messages.length]);
 
-  // Mark messages as read when opening a conversation
+  // Mark messages as read when conversation is opened
   useEffect(() => {
     if (!activeConvId) return;
     setConversations((prev) =>
       prev.map((c) =>
-        c.id === activeConvId
-          ? {
-              ...c,
-              unreadCount: 0,
-              messages: c.messages.map((m) => ({ ...m, isRead: true })),
-            }
-          : c
+        c.id === activeConvId ? { ...c, unreadCount: 0 } : c
       )
     );
   }, [activeConvId]);
 
+  const handleSelectConversation = useCallback((id: string) => {
+    setActiveConvId(id);
+    setShowMobileList(false);
+    setShowWarning(false);
+    setInputText("");
+  }, []);
+
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const val = e.target.value;
+      setInputText(val);
+      if (detectContactInfo(val)) {
+        setWarningText(
+          "براہ کرم ذاتی رابطہ معلومات شیئر نہ کریں۔ Please avoid sharing phone numbers, emails, or social handles."
+        );
+        setShowWarning(true);
+      } else {
+        setShowWarning(false);
+      }
+    },
+    []
+  );
+
   const handleSend = useCallback(() => {
-    const trimmed = inputText.trim();
-    if (!trimmed || !activeConvId) return;
+    if (!inputText.trim() || !activeConvId) return;
 
-    const { text: processedText, wasRedacted, reason } = redactMessage(trimmed);
-
-    if (wasRedacted) {
-      setRedactionWarning(
-        `Your message contained a ${reason} which was removed. Sharing contact info outside ${APP_NAME} violates our safety policy.`
-      );
-      setTimeout(() => setRedactionWarning(null), 6000);
-    }
-
-    const newMsg: LocalChatMessage = {
-      id: `msg_${Date.now()}`,
+    const isContactInfo = detectContactInfo(inputText);
+    const newMessage: Message = {
+      id: `m-${Date.now()}`,
       senderId: CURRENT_USER_ID,
-      text: processedText,
-      sentAt: new Date().toISOString(),
-      isRead: false,
-      isRedacted: wasRedacted,
-      redactedReason: reason,
+      text: inputText.trim(),
+      timestamp: "Just now",
+      status: "sent",
+      isRedacted: isContactInfo,
+      redactedReason: isContactInfo
+        ? "Contact information was removed to keep both parties safe."
+        : undefined,
     };
 
     setConversations((prev) =>
@@ -442,331 +360,396 @@ export default function InAppMessagingChatPage() {
         c.id === activeConvId
           ? {
               ...c,
-              messages: [...c.messages, newMsg],
-              lastMessage: processedText,
-              lastMessageAt: newMsg.sentAt,
+              messages: [...c.messages, newMessage],
+              lastMessage: isContactInfo ? "[Message redacted]" : inputText.trim(),
+              lastMessageTime: "Just now",
             }
           : c
       )
     );
     setInputText("");
-    inputRef.current?.focus();
+    setShowWarning(false);
   }, [inputText, activeConvId]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
+    },
+    [handleSend]
+  );
+
+  const filteredConversations = conversations.filter((c) =>
+    c.otherPartyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.taskTitle.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const totalUnread = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
 
   return (
-    <div className="min-h-screen bg-[var(--background)]">
-      {/* Page Header */}
-      <Reveal>
-        <div className="border-b border-[var(--border)] bg-[var(--card)]/60 backdrop-blur-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-[var(--foreground)] tracking-tight">
-                  Messages
-                </h1>
-                <p className="text-sm text-[var(--muted-foreground)] mt-0.5">
-                  Coordinate with taskers and posters — all conversations are monitored for safety
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                {totalUnread > 0 && (
-                  <span className="px-3 py-1 bg-[var(--brand-primary)] text-white text-xs font-bold rounded-full">
-                    {totalUnread} unread
-                  </span>
-                )}
+    <main className="min-h-screen bg-[var(--background)]">
+      {/* ── Page Header ── */}
+      <div className="bg-[var(--card)] border-b border-[var(--border)] sticky top-0 z-30">
+        <div className="container">
+          <div className="flex items-center justify-between h-14">
+            <div className="flex items-center gap-3">
+              {/* Mobile back button */}
+              {!showMobileList && (
                 <button
-                  onClick={() => setShowSafetyInfo((v) => !v)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs text-[var(--muted-foreground)] hover:bg-[var(--muted)]/50 transition-colors"
+                  onClick={() => setShowMobileList(true)}
+                  className="lg:hidden p-1.5 rounded-lg hover:bg-[var(--background)] transition-colors"
+                  aria-label="Back to conversations"
                 >
-                  <Shield className="w-3.5 h-3.5 text-emerald-500" />
-                  Safety Info
+                  <ChevronLeft className="w-5 h-5 text-[var(--foreground)]" />
                 </button>
+              )}
+              <div>
+                <h1 className="font-bold text-[var(--foreground)] text-base leading-tight">
+                  پیغامات
+                  <span className="ml-2 text-sm font-normal text-[var(--muted-foreground)]">Messages</span>
+                </h1>
+                {totalUnread > 0 && (
+                  <p className="text-xs text-[var(--primary)] font-medium">
+                    {totalUnread} unread
+                  </p>
+                )}
               </div>
             </div>
-
-            {/* Safety Info Banner */}
-            <AnimatePresence>
-              {showSafetyInfo && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="mt-4 p-4 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl">
-                    <div className="flex items-start gap-3">
-                      <Shield className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300 mb-1">
-                          {APP_NAME} Contact Safety Policy
-                        </p>
-                        <ul className="text-xs text-emerald-700 dark:text-emerald-400 space-y-1">
-                          <li>• Phone numbers (03xx, +92xx) are automatically removed from messages</li>
-                          <li>• Email addresses, WhatsApp links, and social handles are blocked</li>
-                          <li>• Number-word evasion (e.g. "zero three...") is detected and redacted</li>
-                          <li>• All coordination happens inside {APP_NAME} to protect both parties</li>
-                          <li>• Disputes are only supported for tasks completed through the platform</li>
-                        </ul>
-                      </div>
-                      <button onClick={() => setShowSafetyInfo(false)} className="ml-auto text-emerald-600 hover:text-emerald-800">
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-medium px-2.5 py-1 rounded-full">
+                <Shield className="w-3 h-3" />
+                <span>آپ کی معلومات محفوظ ہیں</span>
+              </div>
+            </div>
           </div>
         </div>
-      </Reveal>
+      </div>
 
-      {/* Main Chat Layout */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <Reveal>
-          <div className="flex h-[calc(100vh-260px)] min-h-[500px] rounded-2xl border border-[var(--border)] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.06),0_16px_48px_-12px_rgba(0,0,0,0.1)] bg-[var(--card)]">
+      {/* ── Two-panel layout ── */}
+      <div className="container py-4">
+        <div className="flex gap-4 h-[calc(100vh-8rem)]">
 
-            {/* Sidebar — Conversation List */}
-            <div className="w-80 flex-shrink-0 border-r border-[var(--border)] flex flex-col bg-[var(--background)]">
-              {/* Search */}
-              <div className="p-3 border-b border-[var(--border)]">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted-foreground)]" />
-                  <input
-                    type="text"
-                    placeholder="Search conversations..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-sm bg-[var(--muted)]/40 border border-[var(--border)] rounded-lg text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]/30 focus:border-[var(--brand-primary)]/50 transition-all"
-                  />
-                </div>
-              </div>
-
-              {/* Conversation Items */}
-              <div className="flex-1 overflow-y-auto">
-                {filteredConvs.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-center px-6">
-                    <Search className="w-8 h-8 text-[var(--muted-foreground)] mb-2" />
-                    <p className="text-sm text-[var(--muted-foreground)]">No conversations found</p>
-                  </div>
-                ) : (
-                  filteredConvs.map((conv) => (
-                    <ConversationItem
-                      key={conv.id}
-                      conv={conv}
-                      isActive={conv.id === activeConvId}
-                      onClick={() => setActiveConvId(conv.id)}
-                    />
-                  ))
-                )}
-              </div>
-
-              {/* Safety Footer */}
-              <div className="p-3 border-t border-[var(--border)] bg-[var(--muted)]/30">
-                <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
-                  <Lock className="w-3 h-3 text-emerald-500 flex-shrink-0" />
-                  <span>Contact info is automatically protected</span>
-                </div>
+          {/* ── LEFT: Conversation List ── */}
+          <div
+            className={cn(
+              "flex flex-col bg-[var(--card)] rounded-2xl border border-[var(--border)] shadow-[0_2px_8px_rgba(26,26,46,0.06)] overflow-hidden",
+              "w-full lg:w-80 xl:w-96 flex-shrink-0",
+              // Mobile: show/hide based on state
+              showMobileList ? "flex" : "hidden lg:flex"
+            )}
+          >
+            {/* Search */}
+            <div className="p-3 border-b border-[var(--border)]">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted-foreground)]" />
+                <input
+                  type="text"
+                  placeholder="تلاش کریں... Search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-sm bg-[var(--background)] border border-[var(--border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20 focus:border-[var(--primary)] transition-all placeholder:text-[var(--muted-foreground)]"
+                />
               </div>
             </div>
 
-            {/* Chat Area */}
-            {activeConv ? (
-              <div className="flex-1 flex flex-col min-w-0">
-                {/* Chat Header */}
-                <div className="px-5 py-3.5 border-b border-[var(--border)] bg-[var(--card)] flex items-center justify-between flex-shrink-0">
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--brand-primary)]/30 to-[var(--brand-primary)]/10 flex items-center justify-center text-[var(--brand-primary)] font-bold text-sm border border-[var(--brand-primary)]/20">
-                        {activeConv.otherUserName.charAt(0)}
-                      </div>
-                      {activeConv.otherUserVerification === "verified" && (
-                        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center">
-                          <Shield className="w-2.5 h-2.5 text-white" />
+            {/* Conversation items */}
+            <div className="flex-1 overflow-y-auto">
+              {filteredConversations.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full gap-3 p-6 text-center">
+                  <div className="w-12 h-12 rounded-full bg-[var(--background)] flex items-center justify-center">
+                    <Search className="w-5 h-5 text-[var(--muted-foreground)]" />
+                  </div>
+                  <p className="text-sm text-[var(--muted-foreground)]">کوئی گفتگو نہیں ملی</p>
+                  <p className="text-xs text-[var(--muted-foreground)]">No conversations found</p>
+                </div>
+              ) : (
+                filteredConversations.map((conv) => (
+                  <button
+                    key={conv.id}
+                    onClick={() => handleSelectConversation(conv.id)}
+                    className={cn(
+                      "w-full text-left px-4 py-3.5 border-b border-[var(--border)] transition-all duration-150 hover:bg-[var(--background)] group",
+                      activeConvId === conv.id
+                        ? "bg-blue-50 border-l-4 border-l-[var(--primary)]"
+                        : "border-l-4 border-l-transparent"
+                    )}
+                  >
+                    <div className="flex items-start gap-3">
+                      <Avatar
+                        initials={conv.otherPartyInitials}
+                        online={conv.id === "conv-1"}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="font-semibold text-sm text-[var(--foreground)] truncate">
+                            {conv.otherPartyName}
+                          </span>
+                          <span className="text-[10px] text-[var(--muted-foreground)] flex-shrink-0 ml-2">
+                            {conv.lastMessageTime}
+                          </span>
                         </div>
-                      )}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm text-[var(--foreground)]">
-                          {activeConv.otherUserName}
-                        </span>
-                        <VerificationBadge status={activeConv.otherUserVerification} />
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <VerificationBadge status={conv.otherPartyVerification} />
+                          {conv.otherPartyRating > 0 && (
+                            <span className="flex items-center gap-0.5 text-[10px] text-amber-600 font-medium">
+                              <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
+                              {conv.otherPartyRating}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-[var(--muted-foreground)] truncate mb-1">
+                          {conv.taskTitle}
+                        </p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-[var(--muted-foreground)] truncate flex-1">
+                            {conv.lastMessage}
+                          </p>
+                          {conv.unreadCount > 0 && (
+                            <span className="ml-2 flex-shrink-0 w-5 h-5 rounded-full bg-[var(--primary)] text-white text-[10px] font-bold flex items-center justify-center">
+                              {conv.unreadCount}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <StarRating rating={activeConv.otherUserRating} />
-                        <span className="text-[var(--muted-foreground)] text-xs">•</span>
-                        <span className="text-xs text-[var(--muted-foreground)] capitalize">
-                          {activeConv.otherUserRole}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* ── RIGHT: Chat Panel ── */}
+          <div
+            className={cn(
+              "flex-1 flex flex-col bg-[var(--card)] rounded-2xl border border-[var(--border)] shadow-[0_2px_8px_rgba(26,26,46,0.06)] overflow-hidden min-w-0",
+              showMobileList ? "hidden lg:flex" : "flex"
+            )}
+          >
+            {activeConv ? (
+              <>
+                {/* Chat header */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)] bg-[var(--card)]">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar initials={activeConv.otherPartyInitials} online={activeConv.id === "conv-1"} />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-[var(--foreground)] text-sm">
+                          {activeConv.otherPartyName}
                         </span>
+                        <VerificationBadge status={activeConv.otherPartyVerification} />
+                        {activeConv.otherPartyRating > 0 && (
+                          <span className="flex items-center gap-0.5 text-xs text-amber-600 font-medium">
+                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                            {activeConv.otherPartyRating}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                        <span className="text-xs text-[var(--muted-foreground)] flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />
+                          {activeConv.taskArea}
+                        </span>
+                        <span className="text-xs font-semibold text-[var(--primary)]">
+                          {formatPKR(activeConv.taskBudgetPkr)}
+                        </span>
+                        <Link
+                          href={`/task/${activeConv.taskId}`}
+                          className="text-xs text-[var(--primary)] hover:underline truncate max-w-[140px]"
+                        >
+                          {activeConv.taskTitle}
+                        </Link>
                       </div>
                     </div>
                   </div>
-
-                  {/* Task Info */}
-                  <div className="flex items-center gap-3">
-                    <div className="hidden sm:block text-right">
-                      <p className="text-xs font-medium text-[var(--foreground)] truncate max-w-[180px]">
-                        {activeConv.taskTitle}
-                      </p>
-                      <div className="flex items-center gap-2 justify-end mt-0.5">
-                        <span className="text-xs text-[var(--brand-primary)] font-semibold">
-                          {formatPkr(activeConv.taskBudgetPkr)}
-                        </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)] capitalize">
-                          {activeConv.taskStatus.replace("_", " ")}
-                        </span>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-[var(--muted-foreground)]" />
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      className="p-2 rounded-xl hover:bg-[var(--background)] transition-colors text-[var(--muted-foreground)] hover:text-red-600"
+                      title="Report conversation"
+                      aria-label="Report"
+                    >
+                      <Flag className="w-4 h-4" />
+                    </button>
+                    <button
+                      className="p-2 rounded-xl hover:bg-[var(--background)] transition-colors text-[var(--muted-foreground)]"
+                      aria-label="More options"
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
 
-                {/* Redaction Warning */}
+                {/* Safety banner */}
+                <div className="mx-4 mt-3 mb-1 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+                  <Shield className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-semibold text-amber-800">آپ کی معلومات محفوظ ہیں</p>
+                    <p className="text-[11px] text-amber-700 leading-relaxed">
+                      Phone numbers, emails, and social handles are automatically removed from messages to protect both parties. Stay safe — keep all communication in-app.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Messages area */}
+                <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+                  <AnimatePresence initial={false}>
+                    {activeConv.messages.map((msg) => {
+                      const isMine = msg.senderId === CURRENT_USER_ID;
+                      return (
+                        <motion.div
+                          key={msg.id}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className={cn(
+                            "flex",
+                            isMine ? "justify-end" : "justify-start"
+                          )}
+                        >
+                          {!isMine && (
+                            <Avatar initials={activeConv.otherPartyInitials} size="sm" />
+                          )}
+                          <div
+                            className={cn(
+                              "max-w-[72%] ml-2 mr-2",
+                              isMine ? "ml-auto mr-0" : "ml-2 mr-auto"
+                            )}
+                          >
+                            {msg.isRedacted ? (
+                              <div className="bg-amber-50 border border-amber-200 rounded-2xl px-3.5 py-2.5">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                                  <span className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide">
+                                    Redacted
+                                  </span>
+                                </div>
+                                <p className="text-xs italic text-amber-700 leading-relaxed">
+                                  {msg.redactedReason}
+                                </p>
+                              </div>
+                            ) : (
+                              <div
+                                className={cn(
+                                  "rounded-2xl px-3.5 py-2.5 shadow-sm",
+                                  isMine
+                                    ? "bg-[var(--primary)] text-white rounded-br-sm"
+                                    : "bg-white border border-[var(--border)] text-[var(--foreground)] rounded-bl-sm"
+                                )}
+                              >
+                                <p className="text-sm leading-relaxed">{msg.text}</p>
+                              </div>
+                            )}
+                            <div
+                              className={cn(
+                                "flex items-center gap-1 mt-1",
+                                isMine ? "justify-end" : "justify-start"
+                              )}
+                            >
+                              <span className="text-[10px] text-[var(--muted-foreground)]">
+                                {msg.timestamp}
+                              </span>
+                              {isMine && !msg.isRedacted && (
+                                <MessageStatusIcon status={msg.status} />
+                              )}
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Warning banner */}
                 <AnimatePresence>
-                  {redactionWarning && (
+                  {showWarning && (
                     <motion.div
-                      initial={{ opacity: 0, y: -8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
-                      className="mx-4 mt-3 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl flex items-start gap-2"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mx-4 mb-2"
                     >
-                      <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                      <p className="text-xs text-amber-700 dark:text-amber-400">{redactionWarning}</p>
-                      <button onClick={() => setRedactionWarning(null)} className="ml-auto text-amber-600">
-                        <X className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-start gap-2 bg-amber-50 border border-amber-300 rounded-xl px-3 py-2.5">
+                        <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-semibold text-amber-800">
+                            رابطہ معلومات شیئر نہ کریں
+                          </p>
+                          <p className="text-[11px] text-amber-700">
+                            {warningText}
+                          </p>
+                        </div>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
 
-                {/* Messages */}
-                <div className="flex-1 overflow-y-auto px-5 py-4 space-y-1">
-                  {/* Date separator */}
-                  <div className="flex items-center gap-3 my-4">
-                    <div className="flex-1 h-px bg-[var(--border)]" />
-                    <span className="text-[10px] text-[var(--muted-foreground)] px-2">
-                      {formatDate(activeConv.messages[0]?.sentAt ?? new Date().toISOString())}
-                    </span>
-                    <div className="flex-1 h-px bg-[var(--border)]" />
-                  </div>
-
-                  {activeConv.messages.map((msg) => (
-                    <MessageBubble
-                      key={msg.id}
-                      msg={msg}
-                      isMine={msg.senderId === CURRENT_USER_ID}
-                    />
-                  ))}
-                  <div ref={messagesEndRef} />
-                </div>
-
-                {/* Safety Reminder */}
-                <div className="px-5 py-2 bg-[var(--muted)]/20 border-t border-[var(--border)] flex items-center gap-2">
-                  <Phone className="w-3 h-3 text-[var(--muted-foreground)]" />
-                  <p className="text-[10px] text-[var(--muted-foreground)]">
-                    Phone numbers, emails, and external links are automatically removed from messages.
-                  </p>
-                </div>
-
-                {/* Input Area */}
-                <div className="px-4 py-3 border-t border-[var(--border)] bg-[var(--card)] flex-shrink-0">
-                  <div className="flex items-end gap-3">
+                {/* Input area */}
+                <div className="px-4 pb-4 pt-2 border-t border-[var(--border)] bg-[var(--card)]">
+                  <div className="flex items-end gap-2">
                     <div className="flex-1 relative">
                       <textarea
                         ref={inputRef}
                         value={inputText}
-                        onChange={(e) => setInputText(e.target.value)}
+                        onChange={handleInputChange}
                         onKeyDown={handleKeyDown}
-                        placeholder="Type a message... (Enter to send, Shift+Enter for new line)"
+                        placeholder="پیغام لکھیں... Type a message"
                         rows={1}
-                        className="w-full px-4 py-3 text-sm bg-[var(--muted)]/40 border border-[var(--border)] rounded-xl text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]/30 focus:border-[var(--brand-primary)]/50 transition-all resize-none leading-relaxed"
-                        style={{ minHeight: "44px", maxHeight: "120px" }}
+                        className="w-full resize-none bg-[var(--background)] border border-[var(--border)] rounded-2xl px-4 py-3 pr-10 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20 focus:border-[var(--primary)] transition-all leading-relaxed max-h-32 overflow-y-auto"
+                        style={{ minHeight: "44px" }}
                       />
+                      <button
+                        className="absolute right-3 bottom-3 text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-colors"
+                        aria-label="Attach file"
+                        type="button"
+                      >
+                        <Paperclip className="w-4 h-4" />
+                      </button>
                     </div>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
+                    <button
                       onClick={handleSend}
                       disabled={!inputText.trim()}
-                      className="flex-shrink-0 w-11 h-11 bg-[var(--brand-primary)] text-white rounded-xl flex items-center justify-center shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+                      className={cn(
+                        "flex-shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200",
+                        inputText.trim()
+                          ? "bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white shadow-md hover:shadow-lg"
+                          : "bg-[var(--border)] text-[var(--muted-foreground)] cursor-not-allowed"
+                      )}
+                      aria-label="Send message"
                     >
                       <Send className="w-4 h-4" />
-                    </motion.button>
+                    </button>
                   </div>
+                  <p className="text-[10px] text-[var(--muted-foreground)] mt-2 text-center">
+                    <Shield className="w-3 h-3 inline mr-1 text-[var(--primary)]" />
+                    Contact info is automatically removed. Keep communication in-app for your safety.
+                  </p>
                 </div>
-              </div>
+              </>
             ) : (
-              /* Empty State */
-              <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
-                <div className="w-16 h-16 rounded-2xl bg-[var(--brand-primary)]/10 flex items-center justify-center mb-4">
-                  <Send className="w-8 h-8 text-[var(--brand-primary)]" />
+              /* Empty state */
+              <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 text-center">
+                <div className="w-16 h-16 rounded-full bg-[var(--background)] border border-[var(--border)] flex items-center justify-center">
+                  <Phone className="w-7 h-7 text-[var(--muted-foreground)]" />
                 </div>
-                <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">Select a conversation</h3>
-                <p className="text-sm text-[var(--muted-foreground)] max-w-xs">
-                  Choose a conversation from the left to start messaging. All chats are protected by {APP_NAME} safety filters.
-                </p>
+                <div>
+                  <h3 className="font-bold text-[var(--foreground)] mb-1">گفتگو منتخب کریں</h3>
+                  <p className="text-sm text-[var(--muted-foreground)]">
+                    Select a conversation to start messaging
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5">
+                  <Shield className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                  <p className="text-xs text-amber-700">
+                    آپ کی معلومات محفوظ ہیں — Your information is protected
+                  </p>
+                </div>
               </div>
             )}
           </div>
-        </Reveal>
-
-        {/* Info Cards Row */}
-        <Reveal delay={0.1}>
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6"
-          >
-            {[
-              {
-                icon: Shield,
-                title: "Contact Protection",
-                desc: "Phone numbers, emails, and social handles are automatically stripped from every message.",
-                color: "text-emerald-500",
-                bg: "bg-emerald-500/10",
-              },
-              {
-                icon: Lock,
-                title: "Platform-Only Coordination",
-                desc: "All task coordination stays inside Asan Kaam so disputes can be fairly resolved.",
-                color: "text-blue-500",
-                bg: "bg-blue-500/10",
-              },
-              {
-                icon: Info,
-                title: "Evasion Detection",
-                desc: "Number-word tricks like 'zero three...' are detected and blocked automatically.",
-                color: "text-amber-500",
-                bg: "bg-amber-500/10",
-              },
-            ].map((card, i) => (
-              <motion.div
-                key={card.title}
-                variants={fadeInUp}
-                whileHover={{ y: -2 }}
-                className="flex items-start gap-3 p-4 rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_12px_-4px_rgba(0,0,0,0.08)]"
-              >
-                <div className={`w-9 h-9 rounded-lg ${card.bg} flex items-center justify-center flex-shrink-0`}>
-                  <card.icon className={`w-4.5 h-4.5 ${card.color}`} />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-[var(--foreground)] mb-0.5">{card.title}</p>
-                  <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">{card.desc}</p>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
-        </Reveal>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }

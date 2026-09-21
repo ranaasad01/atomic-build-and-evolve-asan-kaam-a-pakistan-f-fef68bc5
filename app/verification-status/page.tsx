@@ -1,679 +1,592 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Shield, CheckCircle, Clock, XCircle, AlertCircle, Upload, FileText, User, Phone, Camera, ChevronRight, Info, Star, Lock, Unlock, Eye } from 'lucide-react';
+import { Shield, Clock, AlertCircle, XCircle, CheckCircle, Upload, Lock, Star, TrendingUp, Zap, ChevronRight, FileText, Eye } from 'lucide-react';
+import Link from "next/link";
 import { Reveal } from "@/components/Reveal";
-import { fadeInUp, staggerContainer, scaleIn } from "@/lib/motion";
-import { APP_NAME, VerificationStatus } from "@/lib/data";
-type COMMISSION_RATE_DEFAULT = any;
-const COMMISSION_RATE_DEFAULT: any = [];
+import { fadeInUp, staggerContainer } from "@/lib/motion";
+import { VerificationStatus } from "@/lib/data";
+import { cn } from "@/lib/utils";
 
-// ─── Local helpers (NOT imported from @/lib/data) ───────────────────────────
-function getVerificationLabel(status: VerificationStatus): string {
-  switch (status) {
-    case "unverified":
-      return "Unverified";
-    case "submitted":
-      return "Under Review";
-    case "verified":
-      return "Verified";
-    case "restricted":
-      return "Restricted";
-  }
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+interface VerificationStep {
+  id: string;
+  label: string;
+  labelUrdu: string;
+  state: "completed" | "current" | "pending";
 }
 
-function getVerificationColor(status: VerificationStatus): string {
-  switch (status) {
-    case "unverified":
-      return "text-gray-500";
-    case "submitted":
-      return "text-amber-600";
-    case "verified":
-      return "text-emerald-600";
-    case "restricted":
-      return "text-red-600";
-  }
-}
+// ─── Mock state ──────────────────────────────────────────────────────────────
 
-function getVerificationBg(status: VerificationStatus): string {
-  switch (status) {
-    case "unverified":
-      return "bg-gray-100 border-gray-200";
-    case "submitted":
-      return "bg-amber-50 border-amber-200";
-    case "verified":
-      return "bg-emerald-50 border-emerald-200";
-    case "restricted":
-      return "bg-red-50 border-red-200";
-  }
-}
+const MOCK_STATUS: VerificationStatus = "submitted";
 
-// ─── Mock current user verification state ───────────────────────────────────
-const MOCK_VERIFICATION: {
-  status: VerificationStatus;
-  submittedAt?: string;
-  reviewedAt?: string;
-  restrictionReason?: string;
-  steps: {
-    key: string;
-    label: string;
-    description: string;
-    completed: boolean;
-    required: boolean;
-  }[];
-} = {
-  status: "submitted",
-  submittedAt: "2025-01-10",
-  steps: [
-    {
-      key: "cnic_front",
-      label: "CNIC Front Photo",
-      description: "Clear photo of the front side of your National ID Card",
-      completed: true,
-      required: true,
-    },
-    {
-      key: "cnic_back",
-      label: "CNIC Back Photo",
-      description: "Clear photo of the back side of your National ID Card",
-      completed: true,
-      required: true,
-    },
-    {
-      key: "selfie",
-      label: "Selfie with CNIC",
-      description: "A selfie holding your CNIC next to your face",
-      completed: true,
-      required: true,
-    },
-    {
-      key: "phone",
-      label: "Phone Number Verified",
-      description: "Verify your Pakistani mobile number via OTP",
-      completed: true,
-      required: true,
-    },
-    {
-      key: "address",
-      label: "Address Proof",
-      description: "Utility bill or bank statement showing your address",
-      completed: false,
-      required: false,
-    },
-  ],
-};
-
-const BENEFITS: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  locked: boolean;
-}[] = [
-  {
-    icon: <Star className="w-5 h-5" />,
-    title: "Verified Badge on Profile",
-    description:
-      "Stand out to posters with a prominent verified checkmark on your profile and bids.",
-    locked: false,
-  },
-  {
-    icon: <Unlock className="w-5 h-5" />,
-    title: "Bid on All Tasks",
-    description:
-      "Unverified taskers can only bid on tasks under Rs 2,000. Verification removes this limit.",
-    locked: false,
-  },
-  {
-    icon: <Shield className="w-5 h-5" />,
-    title: "Priority in Search Results",
-    description:
-      "Verified taskers appear higher in task feed results and get more visibility.",
-    locked: false,
-  },
-  {
-    icon: <Star className="w-5 h-5" />,
-    title: "Reduced Commission Rate",
-    description: `Verified taskers enjoy a reduced commission rate of ${Math.round((COMMISSION_RATE_DEFAULT - 0.02) * 100)}% vs the standard ${Math.round(COMMISSION_RATE_DEFAULT * 100)}%.`,
-    locked: false,
-  },
-  {
-    icon: <Lock className="w-5 h-5" />,
-    title: "Dispute Protection",
-    description:
-      "Verified taskers receive priority support and stronger protections in dispute resolution.",
-    locked: true,
-  },
-  {
-    icon: <Eye className="w-5 h-5" />,
-    title: "Trust Score Display",
-    description:
-      "A public trust score based on your verification level, ratings, and completion rate.",
-    locked: true,
-  },
-];
-
-const TIMELINE: { status: VerificationStatus; label: string; date?: string }[] =
-  [
-    { status: "unverified", label: "Account Created", date: "2025-01-05" },
-    { status: "submitted", label: "Documents Submitted", date: "2025-01-10" },
-    { status: "verified", label: "Verification Complete", date: undefined },
-    { status: "restricted", label: "Account Restricted", date: undefined },
+function buildSteps(status: VerificationStatus): VerificationStep[] {
+  const allSteps: VerificationStep[] = [
+    { id: "phone", label: "Phone Verified", labelUrdu: "فون تصدیق", state: "pending" },
+    { id: "cnic_submitted", label: "CNIC Submitted", labelUrdu: "شناختی کارڈ جمع", state: "pending" },
+    { id: "cnic_verified", label: "CNIC Verified", labelUrdu: "شناختی کارڈ تصدیق", state: "pending" },
+    { id: "profile", label: "Profile Complete", labelUrdu: "پروفائل مکمل", state: "pending" },
   ];
 
-const FAQ: { q: string; a: string }[] = [
+  if (status === "unverified") {
+    allSteps[0].state = "current";
+  } else if (status === "submitted") {
+    allSteps[0].state = "completed";
+    allSteps[1].state = "completed";
+    allSteps[2].state = "current";
+  } else if (status === "verified") {
+    allSteps.forEach((s) => (s.state = "completed"));
+  } else if (status === "restricted") {
+    allSteps[0].state = "completed";
+    allSteps[1].state = "current";
+  }
+
+  return allSteps;
+}
+
+const STATUS_CONFIG: Record<
+  VerificationStatus,
   {
-    q: "How long does verification take?",
-    a: "Our team reviews submissions within 1 to 3 business days. You will receive a notification once your status changes.",
+    icon: React.ElementType;
+    label: string;
+    labelUrdu: string;
+    desc: string;
+    colorClass: string;
+    bgClass: string;
+    borderClass: string;
+  }
+> = {
+  verified: {
+    icon: Shield,
+    label: "Verified",
+    labelUrdu: "تصدیق شدہ",
+    desc: "Your identity has been confirmed. You can bid on tasks and accept paid work across all active cities.",
+    colorClass: "text-emerald-700",
+    bgClass: "bg-emerald-50",
+    borderClass: "border-emerald-200",
+  },
+  submitted: {
+    icon: Clock,
+    label: "Under Review",
+    labelUrdu: "جائزہ جاری ہے",
+    desc: "Your CNIC documents have been received and are being reviewed by our team. This usually takes 1 to 2 business days.",
+    colorClass: "text-amber-700",
+    bgClass: "bg-amber-50",
+    borderClass: "border-amber-200",
+  },
+  unverified: {
+    icon: AlertCircle,
+    label: "Not Verified",
+    labelUrdu: "غیر تصدیق شدہ",
+    desc: "You have not yet submitted your CNIC for verification. Complete verification to unlock bidding and earning on Asan Kaam.",
+    colorClass: "text-[var(--muted-foreground)]",
+    bgClass: "bg-[var(--background)]",
+    borderClass: "border-[var(--border)]",
+  },
+  restricted: {
+    icon: XCircle,
+    label: "Restricted",
+    labelUrdu: "محدود",
+    desc: "Your account has been temporarily restricted. Please contact support to resolve this. You cannot bid on tasks until the restriction is lifted.",
+    colorClass: "text-red-700",
+    bgClass: "bg-red-50",
+    borderClass: "border-red-200",
+  },
+};
+
+const BENEFITS = [
+  {
+    icon: Star,
+    title: "Higher Bid Acceptance",
+    desc: "Verified taskers receive 3x more task assignments than unverified ones.",
   },
   {
-    q: "What if my documents are rejected?",
-    a: "You will receive a reason for rejection and can resubmit corrected documents. Common issues include blurry photos or mismatched names.",
+    icon: TrendingUp,
+    title: "Unlock Higher Budgets",
+    desc: "Tasks above Rs 5,000 are only visible to verified taskers.",
   },
   {
-    q: "Is my CNIC data safe?",
-    a: "Yes. All documents are encrypted at rest and in transit. We follow NADRA guidelines and never share your data with third parties.",
+    icon: Zap,
+    title: "Priority in Search",
+    desc: "Your profile appears higher in poster search results with a verified badge.",
   },
   {
-    q: "Can I still use Asan Kaam while under review?",
-    a: "Yes. You can bid on tasks under Rs 2,000 and receive messages while your verification is being processed.",
-  },
-  {
-    q: "What does 'Restricted' status mean?",
-    a: "A restricted account has been flagged for a policy violation or failed verification. Contact support to understand the reason and appeal.",
+    icon: Shield,
+    title: "Trust Badge on Profile",
+    desc: "A prominent verified shield on your public profile builds poster confidence.",
   },
 ];
-
-// ─── Sub-components ──────────────────────────────────────────────────────────
-
-function StatusBadge({ status }: { status: VerificationStatus }) {
-  const icons: Record<VerificationStatus, React.ReactNode> = {
-    unverified: <AlertCircle className="w-5 h-5" />,
-    submitted: <Clock className="w-5 h-5" />,
-    verified: <CheckCircle className="w-5 h-5" />,
-    restricted: <XCircle className="w-5 h-5" />,
-  };
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold border ${getVerificationBg(status)} ${getVerificationColor(status)}`}
-    >
-      {icons[status]}
-      {getVerificationLabel(status)}
-    </span>
-  );
-}
-
-function StepRow({
-  step,
-  index,
-}: {
-  step: (typeof MOCK_VERIFICATION.steps)[number];
-  index: number;
-}) {
-  return (
-    <motion.div
-      variants={fadeInUp}
-      className={`flex items-start gap-4 p-4 rounded-xl border transition-all duration-200 ${
-        step.completed
-          ? "bg-emerald-50 border-emerald-200"
-          : "bg-white border-gray-200 hover:border-[var(--brand-primary)]/40"
-      }`}
-    >
-      <div
-        className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-          step.completed
-            ? "bg-emerald-500 text-white"
-            : "bg-gray-100 text-gray-400"
-        }`}
-      >
-        {step.completed ? <CheckCircle className="w-4 h-4" /> : index + 1}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span
-            className={`font-semibold text-sm ${step.completed ? "text-emerald-800" : "text-gray-800"}`}
-          >
-            {step.label}
-          </span>
-          {!step.required && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 border border-gray-200">
-              Optional
-            </span>
-          )}
-        </div>
-        <p
-          className={`text-xs mt-0.5 leading-relaxed ${step.completed ? "text-emerald-700" : "text-gray-500"}`}
-        >
-          {step.description}
-        </p>
-      </div>
-      {!step.completed && (
-        <button className="flex-shrink-0 flex items-center gap-1 text-xs font-semibold text-[var(--brand-primary)] hover:underline">
-          <Upload className="w-3.5 h-3.5" />
-          Upload
-        </button>
-      )}
-    </motion.div>
-  );
-}
-
-function FaqItem({ q, a }: { q: string; a: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="border border-gray-200 rounded-xl overflow-hidden">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left bg-white hover:bg-gray-50 transition-colors duration-150"
-      >
-        <span className="font-semibold text-gray-800 text-sm">{q}</span>
-        <ChevronRight
-          className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${open ? "rotate-90" : ""}`}
-        />
-      </button>
-      {open && (
-        <div className="px-5 pb-4 bg-gray-50 border-t border-gray-100">
-          <p className="text-sm text-gray-600 leading-relaxed pt-3">{a}</p>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function VerificationStatusPage() {
-  const [activeTab, setActiveTab] = useState<"status" | "benefits" | "faq">(
-    "status"
-  );
-  const v = MOCK_VERIFICATION;
-  const completedSteps = v.steps.filter((s) => s.completed).length;
-  const totalRequired = v.steps.filter((s) => s.required).length;
-  const completedRequired = v.steps.filter((s) => s.required && s.completed)
-    .length;
-  const progressPct = Math.round((completedRequired / totalRequired) * 100);
+  const [currentStatus, setCurrentStatus] =
+    useState<VerificationStatus>(MOCK_STATUS);
+  const [frontFile, setFrontFile] = useState<File | null>(null);
+  const [backFile, setBackFile] = useState<File | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+
+  const config = STATUS_CONFIG[currentStatus];
+  const StatusIcon = config.icon;
+  const steps = buildSteps(currentStatus);
+  const showUpload = currentStatus === "unverified" || currentStatus === "submitted";
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!frontFile || !backFile) return;
+    setSubmitted(true);
+    setTimeout(() => {
+      setCurrentStatus("submitted");
+      setSubmitted(false);
+    }, 1800);
+  }
 
   return (
-    <main className="min-h-screen bg-[var(--background)]">
-      {/* ── Hero / Status Banner ── */}
-      <Reveal>
-        <section className="bg-gradient-to-br from-[var(--brand-primary)]/10 via-white to-emerald-50 border-b border-gray-100 py-12 md:py-16">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-              <div>
-                <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
-                  <Shield className="w-4 h-4 text-[var(--brand-primary)]" />
-                  <span>Tasker Verification</span>
-                </div>
-                <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight text-balance mb-3">
-                  Verification Status
-                </h1>
-                <p className="text-gray-600 leading-relaxed max-w-lg">
-                  Complete your identity verification to unlock full bidding
-                  access, a verified badge, and reduced commission on{" "}
-                  {APP_NAME}.
-                </p>
-              </div>
+    <main className="min-h-screen bg-[var(--background)] pb-16">
+      {/* ── Page Header ── */}
+      <section className="bg-[var(--primary)] pt-10 pb-14 relative overflow-hidden">
+        {/* Subtle geometric overlay */}
+        <div
+          className="absolute inset-0 opacity-[0.07]"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(45deg, #fff 0px, #fff 1px, transparent 1px, transparent 12px)",
+          }}
+          aria-hidden="true"
+        />
+        <div className="container relative z-10">
+          <Reveal>
+            <div className="flex flex-col gap-1">
+              <p className="text-white/60 text-sm font-medium tracking-wide uppercase">
+                Tasker Dashboard
+              </p>
+              <h1 className="text-2xl md:text-3xl font-bold text-white leading-tight">
+                Verification Status
+              </h1>
+              <p
+                className="text-white/70 text-lg mt-0.5"
+                style={{ fontFamily: "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif" }}
+                dir="rtl"
+              >
+                تصدیق کی حیثیت
+              </p>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      <div className="container -mt-8 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* ── Left column ── */}
+          <div className="lg:col-span-2 flex flex-col gap-6">
+            {/* Status Card */}
+            <Reveal>
               <div
-                className={`flex-shrink-0 rounded-2xl border-2 p-6 text-center min-w-[180px] shadow-[0_2px_12px_rgba(0,0,0,0.06)] ${getVerificationBg(v.status)}`}
+                className={cn(
+                  "card p-6 border-2 flex flex-col sm:flex-row items-start sm:items-center gap-5",
+                  config.borderClass
+                )}
               >
                 <div
-                  className={`text-4xl font-black mb-1 ${getVerificationColor(v.status)}`}
+                  className={cn(
+                    "w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0",
+                    config.bgClass
+                  )}
                 >
-                  {progressPct}%
+                  <StatusIcon
+                    className={cn("w-8 h-8", config.colorClass)}
+                    aria-hidden="true"
+                  />
                 </div>
-                <div className="text-xs text-gray-500 mb-3">
-                  Required steps done
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <span
+                      className={cn(
+                        "text-xl font-bold",
+                        config.colorClass
+                      )}
+                    >
+                      {config.label}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-sm px-2 py-0.5 rounded-full font-medium border",
+                        config.bgClass,
+                        config.colorClass,
+                        config.borderClass
+                      )}
+                      style={{
+                        fontFamily:
+                          "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif",
+                      }}
+                      dir="rtl"
+                    >
+                      {config.labelUrdu}
+                    </span>
+                  </div>
+                  <p className="text-[var(--muted-foreground)] text-sm leading-relaxed">
+                    {config.desc}
+                  </p>
                 </div>
-                <StatusBadge status={v.status} />
               </div>
-            </div>
+            </Reveal>
 
-            {/* Progress bar */}
-            <div className="mt-8">
-              <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-                <span>
-                  {completedRequired} of {totalRequired} required steps
-                  completed
-                </span>
-                <span>{completedSteps} of {v.steps.length} total</span>
-              </div>
-              <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                <motion.div
-                  className="h-full bg-gradient-to-r from-[var(--brand-primary)] to-emerald-500 rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progressPct}%` }}
-                  transition={{ duration: 0.8, ease: "easeOut", delay: 0.3 }}
-                />
-              </div>
-            </div>
-
-            {/* Status-specific alert */}
-            {v.status === "submitted" && (
-              <div className="mt-5 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                <Clock className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-amber-800">
-                  Your documents were submitted on{" "}
-                  <strong>{v.submittedAt}</strong>. Our team reviews submissions
-                  within 1 to 3 business days. No action needed from you right
-                  now.
-                </p>
-              </div>
-            )}
-            {v.status === "restricted" && v.restrictionReason && (
-              <div className="mt-5 flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-                <XCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-red-800">
-                  <strong>Account Restricted:</strong> {v.restrictionReason}{" "}
-                  Please contact support to appeal.
-                </p>
-              </div>
-            )}
-            {v.status === "verified" && (
-              <div className="mt-5 flex items-start gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
-                <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-emerald-800">
-                  Your identity is fully verified. You have access to all tasker
-                  features and the reduced commission rate.
-                </p>
-              </div>
-            )}
-          </div>
-        </section>
-      </Reveal>
-
-      {/* ── Tabs ── */}
-      <Reveal>
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 mt-8">
-          <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
-            {(
-              [
-                { key: "status", label: "My Documents" },
-                { key: "benefits", label: "Benefits" },
-                { key: "faq", label: "FAQ" },
-              ] as const
-            ).map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
-                  activeTab === tab.key
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </Reveal>
-
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8">
-        {/* ── Tab: Status / Documents ── */}
-        {activeTab === "status" && (
-          <>
-            {/* Verification timeline */}
-            <Reveal>
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-5 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-[var(--brand-primary)]" />
-                  Verification Journey
+            {/* Verification Steps */}
+            <Reveal delay={0.05}>
+              <div className="card p-6">
+                <h2 className="section-heading mb-5 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-[var(--primary)]" aria-hidden="true" />
+                  Verification Steps
                 </h2>
-                <div className="relative">
-                  <div className="absolute left-4 top-0 bottom-0 w-px bg-gray-200" />
-                  <div className="space-y-0">
-                    {TIMELINE.map((step, i) => {
-                      const isCurrent = step.status === v.status;
-                      const isPast =
-                        TIMELINE.findIndex((t) => t.status === v.status) > i;
-                      const isFuture =
-                        TIMELINE.findIndex((t) => t.status === v.status) < i;
-                      if (step.status === "restricted") return null;
-                      return (
-                        <div key={step.status} className="flex items-start gap-4 pb-6 last:pb-0">
+                <ol className="relative flex flex-col gap-0">
+                  {steps.map((step, idx) => {
+                    const isLast = idx === steps.length - 1;
+                    return (
+                      <li key={step.id} className="flex gap-4">
+                        {/* Connector line + icon */}
+                        <div className="flex flex-col items-center">
                           <div
-                            className={`relative z-10 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center border-2 ${
-                              isCurrent
-                                ? "bg-[var(--brand-primary)] border-[var(--brand-primary)] text-white"
-                                : isPast
-                                ? "bg-emerald-500 border-emerald-500 text-white"
-                                : "bg-white border-gray-300 text-gray-400"
-                            }`}
+                            className={cn(
+                              "w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-colors",
+                              step.state === "completed"
+                                ? "bg-emerald-500 border-emerald-500"
+                                : step.state === "current"
+                                ? "bg-[var(--primary)] border-[var(--primary)]"
+                                : "bg-white border-[var(--border)]"
+                            )}
                           >
-                            {isPast ? (
-                              <CheckCircle className="w-4 h-4" />
-                            ) : isCurrent ? (
-                              <Clock className="w-4 h-4" />
+                            {step.state === "completed" ? (
+                              <CheckCircle
+                                className="w-5 h-5 text-white"
+                                aria-hidden="true"
+                              />
+                            ) : step.state === "current" ? (
+                              <Clock
+                                className="w-4 h-4 text-white"
+                                aria-hidden="true"
+                              />
                             ) : (
-                              <span className="text-xs font-bold">{i + 1}</span>
+                              <span className="w-2 h-2 rounded-full bg-[var(--border)]" />
                             )}
                           </div>
-                          <div className="pt-1">
+                          {!isLast && (
                             <div
-                              className={`font-semibold text-sm ${isCurrent ? "text-[var(--brand-primary)]" : isPast ? "text-gray-800" : "text-gray-400"}`}
+                              className={cn(
+                                "w-0.5 flex-1 my-1 min-h-[2rem]",
+                                step.state === "completed"
+                                  ? "bg-emerald-300"
+                                  : "bg-[var(--border)]"
+                              )}
+                            />
+                          )}
+                        </div>
+
+                        {/* Step content */}
+                        <div className="pb-6 flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span
+                              className={cn(
+                                "font-semibold text-sm",
+                                step.state === "completed"
+                                  ? "text-emerald-700"
+                                  : step.state === "current"
+                                  ? "text-[var(--primary)]"
+                                  : "text-[var(--muted-foreground)]"
+                              )}
                             >
                               {step.label}
-                            </div>
-                            {step.date && (
-                              <div className="text-xs text-gray-400 mt-0.5">
-                                {step.date}
-                              </div>
+                            </span>
+                            <span
+                              className="text-xs text-[var(--muted-foreground)]"
+                              style={{
+                                fontFamily:
+                                  "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif",
+                              }}
+                              dir="rtl"
+                            >
+                              {step.labelUrdu}
+                            </span>
+                            {step.state === "completed" && (
+                              <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-medium">
+                                Done
+                              </span>
                             )}
-                            {isCurrent && !step.date && (
-                              <div className="text-xs text-amber-600 mt-0.5">
-                                In progress
-                              </div>
-                            )}
-                            {isFuture && (
-                              <div className="text-xs text-gray-400 mt-0.5">
-                                Pending
-                              </div>
+                            {step.state === "current" && (
+                              <span className="text-xs bg-blue-50 text-[var(--primary)] border border-blue-200 px-2 py-0.5 rounded-full font-medium">
+                                In Progress
+                              </span>
                             )}
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                      </li>
+                    );
+                  })}
+                </ol>
               </div>
             </Reveal>
 
-            {/* Document checklist */}
-            <Reveal>
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
-                  <User className="w-5 h-5 text-[var(--brand-primary)]" />
-                  Document Checklist
+            {/* CNIC Upload Section */}
+            {showUpload && (
+              <Reveal delay={0.1}>
+                <div className="card p-6">
+                  <h2 className="section-heading mb-1 flex items-center gap-2">
+                    <Upload className="w-5 h-5 text-[var(--primary)]" aria-hidden="true" />
+                    {currentStatus === "submitted"
+                      ? "Documents Submitted"
+                      : "Upload CNIC Documents"}
+                  </h2>
+                  <p className="text-[var(--muted-foreground)] text-sm mb-5">
+                    {currentStatus === "submitted"
+                      ? "Your documents are under review. You will be notified once verification is complete."
+                      : "Upload a clear photo of the front and back of your CNIC (Computerised National Identity Card)."}
+                  </p>
+
+                  {currentStatus === "unverified" && (
+                    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                      {/* Front */}
+                      <div>
+                        <label className="block text-sm font-semibold text-[var(--foreground)] mb-1.5">
+                          CNIC Front Side
+                          <span className="text-[var(--destructive)] ml-1">*</span>
+                        </label>
+                        <label
+                          className={cn(
+                            "flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl p-6 cursor-pointer transition-colors",
+                            frontFile
+                              ? "border-emerald-400 bg-emerald-50"
+                              : "border-[var(--border)] bg-[var(--background)] hover:border-[var(--primary)] hover:bg-blue-50"
+                          )}
+                        >
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="sr-only"
+                            onChange={(e) =>
+                              setFrontFile(e.target.files?.[0] ?? null)
+                            }
+                          />
+                          {frontFile ? (
+                            <>
+                              <CheckCircle className="w-7 h-7 text-emerald-500" />
+                              <span className="text-sm font-medium text-emerald-700">
+                                {frontFile.name}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-7 h-7 text-[var(--muted-foreground)]" />
+                              <span className="text-sm text-[var(--muted-foreground)]">
+                                Tap to upload front of CNIC
+                              </span>
+                            </>
+                          )}
+                        </label>
+                      </div>
+
+                      {/* Back */}
+                      <div>
+                        <label className="block text-sm font-semibold text-[var(--foreground)] mb-1.5">
+                          CNIC Back Side
+                          <span className="text-[var(--destructive)] ml-1">*</span>
+                        </label>
+                        <label
+                          className={cn(
+                            "flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl p-6 cursor-pointer transition-colors",
+                            backFile
+                              ? "border-emerald-400 bg-emerald-50"
+                              : "border-[var(--border)] bg-[var(--background)] hover:border-[var(--primary)] hover:bg-blue-50"
+                          )}
+                        >
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="sr-only"
+                            onChange={(e) =>
+                              setBackFile(e.target.files?.[0] ?? null)
+                            }
+                          />
+                          {backFile ? (
+                            <>
+                              <CheckCircle className="w-7 h-7 text-emerald-500" />
+                              <span className="text-sm font-medium text-emerald-700">
+                                {backFile.name}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-7 h-7 text-[var(--muted-foreground)]" />
+                              <span className="text-sm text-[var(--muted-foreground)]">
+                                Tap to upload back of CNIC
+                              </span>
+                            </>
+                          )}
+                        </label>
+                      </div>
+
+                      {/* Privacy notice */}
+                      <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl p-4">
+                        <Lock
+                          className="w-4 h-4 text-[var(--primary)] flex-shrink-0 mt-0.5"
+                          aria-hidden="true"
+                        />
+                        <p className="text-xs text-[var(--primary)] leading-relaxed">
+                          Your CNIC data is handled securely and used only for identity
+                          verification. Integration with a licensed verification provider
+                          is coming soon. No data is shared with third parties without
+                          your consent.
+                        </p>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={!frontFile || !backFile || submitted}
+                        className={cn(
+                          "btn-primary w-full sm:w-auto self-start",
+                          (!frontFile || !backFile || submitted) &&
+                            "opacity-50 cursor-not-allowed"
+                        )}
+                      >
+                        {submitted ? (
+                          <>
+                            <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                            Submitting...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-4 h-4" />
+                            Submit for Verification
+                          </>
+                        )}
+                      </button>
+                    </form>
+                  )}
+
+                  {currentStatus === "submitted" && (
+                    <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                      <Eye
+                        className="w-5 h-5 text-amber-600 flex-shrink-0"
+                        aria-hidden="true"
+                      />
+                      <p className="text-sm text-amber-700">
+                        Our team is reviewing your documents. You will receive a
+                        notification once your verification is approved.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </Reveal>
+            )}
+          </div>
+
+          {/* ── Right column ── */}
+          <div className="flex flex-col gap-6">
+            {/* Benefits */}
+            <Reveal delay={0.08}>
+              <div className="card p-6">
+                <h2 className="section-heading mb-4 flex items-center gap-2">
+                  <Shield
+                    className="w-5 h-5 text-[var(--accent)]"
+                    aria-hidden="true"
+                  />
+                  Benefits of Verification
                 </h2>
-                <p className="text-sm text-gray-500 mb-5">
-                  Upload clear, well-lit photos. Blurry or cropped images will
-                  be rejected.
-                </p>
-                <motion.div
+                <motion.ul
                   variants={staggerContainer}
                   initial="hidden"
-                  animate="visible"
-                  className="space-y-3"
+                  whileInView="visible"
+                  viewport={{ once: true }}
+                  className="flex flex-col gap-4"
                 >
-                  {v.steps.map((step, i) => (
-                    <StepRow key={step.key} step={step} index={i} />
-                  ))}
-                </motion.div>
-
-                {v.status === "unverified" && (
-                  <button className="mt-6 w-full flex items-center justify-center gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary)]/90 text-white font-bold py-3 rounded-xl transition-all duration-200 shadow-[0_2px_8px_rgba(0,0,0,0.12)]">
-                    <Upload className="w-4 h-4" />
-                    Submit Documents for Review
-                  </button>
-                )}
+                  {BENEFITS.map((benefit) => {
+                    const BIcon = benefit.icon;
+                    return (
+                      <motion.li
+                        key={benefit.title}
+                        variants={fadeInUp}
+                        className="flex items-start gap-3"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <BIcon
+                            className="w-4 h-4 text-[var(--accent)]"
+                            aria-hidden="true"
+                          />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-[var(--foreground)]">
+                            {benefit.title}
+                          </p>
+                          <p className="text-xs text-[var(--muted-foreground)] leading-relaxed mt-0.5">
+                            {benefit.desc}
+                          </p>
+                        </div>
+                      </motion.li>
+                    );
+                  })}
+                </motion.ul>
               </div>
             </Reveal>
 
-            {/* Tips */}
-            <Reveal>
-              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5">
-                <div className="flex items-start gap-3">
-                  <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h3 className="font-bold text-blue-900 text-sm mb-2">
-                      Tips for a successful verification
-                    </h3>
-                    <ul className="space-y-1.5 text-sm text-blue-800">
-                      <li className="flex items-start gap-2">
-                        <Camera className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                        Ensure photos are taken in good lighting with no glare
-                        on the card.
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <FileText className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                        All four corners of the CNIC must be visible in the
-                        frame.
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Phone className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                        The name on your CNIC must match the name on your{" "}
-                        {APP_NAME} account.
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <User className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                        In your selfie, hold the CNIC beside your face so both
-                        are clearly visible.
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </Reveal>
-          </>
-        )}
-
-        {/* ── Tab: Benefits ── */}
-        {activeTab === "benefits" && (
-          <Reveal>
-            <div>
-              <div className="mb-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-1">
-                  What verification unlocks
+            {/* Quick links */}
+            <Reveal delay={0.12}>
+              <div className="card p-5">
+                <h2 className="text-sm font-semibold text-[var(--foreground)] mb-3 uppercase tracking-wide">
+                  Quick Links
                 </h2>
-                <p className="text-gray-500 text-sm">
-                  Verified taskers earn more, pay less commission, and build
-                  trust faster.
-                </p>
-              </div>
-              <motion.div
-                variants={staggerContainer}
-                initial="hidden"
-                animate="visible"
-                className="grid grid-cols-1 sm:grid-cols-2 gap-4"
-              >
-                {BENEFITS.map((b, i) => (
-                  <motion.div
-                    key={i}
-                    variants={scaleIn}
-                    className={`relative rounded-2xl border p-5 transition-all duration-200 ${
-                      b.locked
-                        ? "bg-gray-50 border-gray-200 opacity-60"
-                        : "bg-white border-gray-200 hover:border-[var(--brand-primary)]/40 hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)]"
-                    }`}
-                  >
-                    {b.locked && (
-                      <div className="absolute top-3 right-3">
-                        <Lock className="w-4 h-4 text-gray-400" />
-                      </div>
-                    )}
-                    <div
-                      className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${
-                        b.locked
-                          ? "bg-gray-200 text-gray-400"
-                          : "bg-[var(--brand-primary)]/15 text-[var(--brand-primary)]"
-                      }`}
+                <div className="flex flex-col gap-1">
+                  {[
+                    { label: "My Profile", href: "/tasker-profile" },
+                    { label: "Balance & Ledger", href: "/tasker-balance-transaction-history" },
+                    { label: "My Bids", href: "/my-bids-tasker" },
+                    { label: "Ratings & Reviews", href: "/ratings-reviews" },
+                  ].map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-[var(--background)] transition-colors group"
                     >
-                      {b.icon}
-                    </div>
-                    <h3 className="font-bold text-gray-900 text-sm mb-1">
-                      {b.title}
-                    </h3>
-                    <p className="text-xs text-gray-500 leading-relaxed">
-                      {b.description}
-                    </p>
-                    {b.locked && (
-                      <div className="mt-3 text-xs text-gray-400 font-medium">
-                        Coming soon
-                      </div>
-                    )}
-                  </motion.div>
-                ))}
-              </motion.div>
-
-              {/* Commission comparison */}
-              <div className="mt-8 bg-gradient-to-r from-[var(--brand-primary)]/10 to-emerald-50 border border-[var(--brand-primary)]/20 rounded-2xl p-6">
-                <h3 className="font-bold text-gray-900 mb-4 text-sm">
-                  Commission Rate Comparison
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-                    <div className="text-2xl font-black text-gray-400 mb-1">
-                      {Math.round(COMMISSION_RATE_DEFAULT * 100)}%
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      Unverified / Standard
-                    </div>
-                  </div>
-                  <div className="bg-white rounded-xl border border-emerald-300 p-4 text-center shadow-[0_2px_8px_rgba(16,185,129,0.12)]">
-                    <div className="text-2xl font-black text-emerald-600 mb-1">
-                      {Math.round((COMMISSION_RATE_DEFAULT - 0.02) * 100)}%
-                    </div>
-                    <div className="text-xs text-emerald-700 font-semibold">
-                      Verified Tasker
-                    </div>
-                  </div>
+                      <span className="text-sm text-[var(--foreground)] group-hover:text-[var(--primary)] transition-colors">
+                        {link.label}
+                      </span>
+                      <ChevronRight
+                        className="w-4 h-4 text-[var(--muted-foreground)] group-hover:text-[var(--primary)] transition-colors"
+                        aria-hidden="true"
+                      />
+                    </Link>
+                  ))}
                 </div>
-                <p className="text-xs text-gray-500 mt-3 text-center">
-                  On a Rs 5,000 task, that is Rs{" "}
-                  {(5000 * 0.02).toLocaleString("en-PK")} more in your pocket
-                  per job.
-                </p>
               </div>
-            </div>
-          </Reveal>
-        )}
+            </Reveal>
 
-        {/* ── Tab: FAQ ── */}
-        {activeTab === "faq" && (
-          <Reveal>
-            <div>
-              <div className="mb-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-1">
-                  Frequently Asked Questions
-                </h2>
-                <p className="text-gray-500 text-sm">
-                  Everything you need to know about the verification process.
+            {/* Dev switcher (demo only) */}
+            <Reveal delay={0.15}>
+              <div className="card p-5 border-dashed">
+                <p className="text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wide mb-3">
+                  Demo: Switch Status
                 </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["unverified", "submitted", "verified", "restricted"] as VerificationStatus[]).map(
+                    (s) => (
+                      <button
+                        key={s}
+                        onClick={() => setCurrentStatus(s)}
+                        className={cn(
+                          "text-xs px-2 py-1.5 rounded-lg border font-medium transition-colors capitalize",
+                          currentStatus === s
+                            ? "bg-[var(--primary)] text-white border-[var(--primary)]"
+                            : "bg-white text-[var(--muted-foreground)] border-[var(--border)] hover:border-[var(--primary)] hover:text-[var(--primary)]"
+                        )}
+                      >
+                        {s}
+                      </button>
+                    )
+                  )}
+                </div>
               </div>
-              <div className="space-y-3">
-                {FAQ.map((item, i) => (
-                  <FaqItem key={i} q={item.q} a={item.a} />
-                ))}
-              </div>
-
-              <div className="mt-8 bg-gray-50 border border-gray-200 rounded-2xl p-6 text-center">
-                <h3 className="font-bold text-gray-900 mb-2">
-                  Still have questions?
-                </h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  Our support team is available 9am to 9pm, Monday to Saturday.
-                </p>
-                <a
-                  href="mailto:support@asankaam.pk"
-                  className="inline-flex items-center gap-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary)]/90 text-white font-bold px-5 py-2.5 rounded-xl transition-all duration-200 text-sm"
-                >
-                  Contact Support
-                  <ChevronRight className="w-4 h-4" />
-                </a>
-              </div>
-            </div>
-          </Reveal>
-        )}
+            </Reveal>
+          </div>
+        </div>
       </div>
     </main>
   );
